@@ -1,0 +1,7 @@
+[Unit]
+Description=Run Ludusavi Backup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/flatpak run com.github.mtkennerly.ludusavi backup --path /home/dkub/ludusavi-backup --force --compression zstd
+WorkingDirectory=/home/dkub
