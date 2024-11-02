@@ -7,23 +7,28 @@ modules:
     files:
       - source: system
         destination: /
-
   - type: rpm-ostree
     repos:
       - vscode.repo
-      - 1password.repo
     keys:
       - https://packages.microsoft.com/keys/microsoft.asc
-      - https://downloads.1password.com/linux/keys/1password.asc
     install:
       - code
       - hardinfo2
       - firefox
-      - 1password
   - type: default-flatpaks
     notify: true
     system:
       install:
         - com.github.mtkennerly.ludusavi
+        - io.podman_desktop.PodmanDesktop
+      remove:
+        - org.mozilla.firefox
+  - type: bling
+    install:
+      - 1password
+  - type: justfiles
+    include:
+      - enable-daily-ludsavi-backups.just
   - type: signing
 
