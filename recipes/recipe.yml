@@ -11,11 +11,15 @@ modules:
   - type: rpm-ostree
     repos:
       - vscode.repo
+      - 1password.repo
     keys:
       - https://packages.microsoft.com/keys/microsoft.asc
+      - https://downloads.1password.com/linux/keys/1password.asc
     install:
       - code
       - hardinfo2
+      - firefox
+      - 1password
   - type: default-flatpaks
     notify: true
     system:
