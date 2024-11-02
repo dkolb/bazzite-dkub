@@ -10,12 +10,19 @@ modules:
   - type: rpm-ostree
     repos:
       - vscode.repo
+      - docker-ce.repo
     keys:
       - https://packages.microsoft.com/keys/microsoft.asc
+      - https://download.docker.com/linux/fedora/gpg
     install:
       - code
       - hardinfo2
       - firefox
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
   - type: default-flatpaks
     notify: true
     system:
