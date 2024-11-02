@@ -31,10 +31,12 @@ jobs:
         run: |
           echo "GITHUB_BRANCH=${{ github.ref_name }}" > image-info-gh-env
       - name: Build Custom Image
-        uses: blue-build/github-action@v1.6
+        # uses: blue-build/github-action@v1.6
+        uses: dkolb/bluebuild-github-action@skip-checkout
         with:
           recipe: ${{ matrix.recipe }}
           cosign_private_key: ${{ secrets.SIGNING_SECRET }}
           registry_token: ${{ github.token }}
           pr_event_number: ${{ github.event.number }}
           maximize_build_space: true
+          skip_checkout: true
