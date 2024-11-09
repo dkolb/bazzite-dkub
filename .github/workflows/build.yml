@@ -28,10 +28,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
        # the build is fully handled by the reusable github action
-      - name: Build Image Info Environment File
-        working-directory: ./files/system/usr/libexec/containerbuild/
+      - name: Determine IMAGE_TAG name
+        id: image-tag-name
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BRANCH: ${{ github.ref_name }}
+          PR_NUMBER: ${{ github.event.number }}
         run: |
-          echo "GH_BRANCH=${{ github.ref_name }}" > image-info-gh-env
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            echo "image-tag=pr${PR_NUMBER}" >> $GITHUB_OUTPUT
+          else
+            echo "image-tag=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+          fi
+      - name: Build Image Info ARGS Containerfile
+        working-directory: ./containerfiles/buildargs/
+        run: |
+          printf "###\n# containerfiles/buildargs/Containerfile\n###\n\n" > Containerfile
+          echo "ARG GIT_BRANCH='${{ github.ref_name }}'" >> Containerfile
+          echo "ARG IMAGE_TAG='${{ steps.image-tag-name.outputs.image-tag }}'" >> Containerfile
+          echo "ARG GIT_REPO='${{ github.server_url }}/${{ github.repository }}'" >> Containerfile
+          echo "ARG GIT_SHA='${{ github.sha }}'" >> Containerfile
+          printf "###\nend file\n###\n\n"
       - name: Build Custom Image
         # uses: blue-build/github-action@v1.6
         uses: dkolb/bluebuild-github-action@fork-main
@@ -42,4 +59,4 @@ jobs:
           pr_event_number: ${{ github.event.number }}
           maximize_build_space: true
           skip_checkout: true
-          build_options: "--compression-format zstd"
+          build_opts: "--compression-format zstd"
