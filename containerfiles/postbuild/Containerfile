@@ -1,0 +1,9 @@
+############################################
+## containerfiles/postbuild/Containerfile ##
+############################################
+
+# Customize OS build info and update GRUB menu entries.
+RUN \
+  /usr/libexec/containerbuild/image-info && \
+  KERNEL_FLAVOR=bazzite /usr/libexec/containerbuild/build-initramfs && \
+  ostree container commit

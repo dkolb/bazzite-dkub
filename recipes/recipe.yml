@@ -37,8 +37,8 @@ modules:
   - type: justfiles
     include:
       - enable-daily-ludsavi-backups.just
-  - type: script
-    scripts:
-      - post_build.sh
+  - type: containerfile
+    containerfiles:
+      - postbuild
   - type: signing
 
