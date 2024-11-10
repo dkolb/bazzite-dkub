@@ -1,16 +1,24 @@
 name: bluebuild
 on:
-  schedule:
-    - cron: "00 12 * * *" # build at 06:00 UTC every day 
-                          # (20 minutes after last ublue images start building)
-  push:
-    branches:
-      - main
-    paths-ignore: # don't rebuild if only documentation has changed
-      - "**.md"
-      
-  pull_request:
-  workflow_dispatch: # allow manually triggering builds
+  workflow_call: # allow manually triggering builds
+    inputs:
+      image-tag:
+        type: string
+        required: true
+        description: Value for IMAGE_TAG build arg.
+      recipes:
+        type: string
+        required: true
+        description: |
+          A JSON string representing an array of recipe yamls to feed into
+          the job matrix.
+
+          Example: '["recipe.yml"]'
+      event_number:
+        type: number
+        required: false
+        description: |
+          Passthrough to pr_event_number
 jobs:
   bluebuild:
     name: Build Custom Image
@@ -22,41 +30,68 @@ jobs:
     strategy:
       fail-fast: false # stop GH from cancelling all matrix builds if one fails
       matrix:
-        recipe:
-          # !! Add your recipes here 
-          - recipe.yml
+        recipe: ${{ fromJSON(inputs.recipes) }}
     steps:
       - uses: actions/checkout@v4
        # the build is fully handled by the reusable github action
-      - name: Determine IMAGE_TAG name
-        id: image-tag-name
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BRANCH: ${{ github.ref_name }}
-          PR_NUMBER: ${{ github.event.number }}
+      - name: Determing major OS version
+        id: os-version
+        shell: bash
         run: |
-          if [ "$EVENT_NAME" = "pull_request" ]; then
-            echo "image-tag=pr${PR_NUMBER}" >> $GITHUB_OUTPUT
-          else
-            echo "image-tag=${BRANCH_NAME}" >> $GITHUB_OUTPUT
-          fi
+          BASE_IMAGE=`jq -r '."base-image"' < ./recipes/${{ matrix.recipe }}`
+          BASE_IMAGE_TAG=`jq -r '."image-version"' < ./recipes/${{ matrix.recipe }}`
+          MAJOR_VERSION=`skopeo inspect "docker://$BASE_IMAGE:$BASE_IMAGE_TAG" |
+            jq -r '."Labels"."org.opencontainers.image.version"' |
+            awk -F. '{ print $1 }'`
+          echo "major-version=$MAJOR_VERSION" >> $GITHUB_OUTPUT
       - name: Build Image Info ARGS Containerfile
         working-directory: ./containerfiles/buildargs/
+        shell: bash
         run: |
           printf "###\n# containerfiles/buildargs/Containerfile\n###\n\n" > Containerfile
           echo "ARG GIT_BRANCH='${{ github.ref_name }}'" >> Containerfile
-          echo "ARG IMAGE_TAG='${{ steps.image-tag-name.outputs.image-tag }}'" >> Containerfile
+          echo "ARG IMAGE_TAG='${{ inputs.image-tag }}'" >> Containerfile
           echo "ARG GIT_REPO='${{ github.server_url }}/${{ github.repository }}'" >> Containerfile
           echo "ARG GIT_SHA='${{ github.sha }}'" >> Containerfile
           printf "###\nend file\n###\n\n"
+      - name: Build Image Lables Containerfile
+        working-directory: ./containerfiles/labels
+        shell: bash
+        run: |
+          printf "###\n# containerfiles/buildargs/Containerfile\n###\n\n" > Containerfile
+          echo "LABEL org.opencontainers.image.version \"41.`date '+%Y%m%d'`\"" >> Containerfile
+          echo "LABEL org.opencontainers.image.created \"`date -u +%Y-%m-%dT%H:%M:%SZ`\"" >> Containerfile
+          echo "LABEL org.opencontainers.image.url \"${{ github.server_url }}/${{ github.repository }}\"" >> Containerfile
       - name: Build Custom Image
         # uses: blue-build/github-action@v1.6
-        uses: dkolb/bluebuild-github-action@fork-main
+        uses: ./.github/actions/bluebuild
         with:
           recipe: ${{ matrix.recipe }}
           cosign_private_key: ${{ secrets.SIGNING_SECRET }}
           registry_token: ${{ github.token }}
-          pr_event_number: ${{ github.event.number }}
+          pr_event_number: ${{ inputs.event_number }}
           maximize_build_space: true
           skip_checkout: true
-          build_opts: "--compression-format zstd"
+          build_opts: "--registry=localhost --registry-namespace=raw"
+      - name: Run Rechunker
+        id: rechunk
+        uses: hhd-dev/rechunk@v1.0.1
+        with:
+          rechunk: 'ghcr.io/hhd-dev/rechunk:v1.0.1'
+          ref: 'localhost/raw/bazzite-dkub:unchunked'
+          prev-ref: 'ghcr.io/dkolb/bazzite-dkub:latest'
+          version: '41.test-rechunk'
+          skip_compression: 1
+          labels: |
+            io.artifacthub.package.logo-url=https://raw.githubusercontent.com/ublue-os/bazzite/main/repo_content/logo.png
+            io.artifacthub.package.readme-url=https://docs.bazzite.gg
+            org.opencontainers.image.created=<timestamp>
+            org.opencontainers.image.description=Bazzite is a custom image built upon Fedora Atomic Desktops that brings the best of Linux gaming to all of your devices - including your favorite handheld.
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/ublue-os/bazzite
+            org.opencontainers.image.title=Bazzite
+            org.opencontainers.image.vendor=Universal Blue
+            org.opencontainers.image.url=https://bazzite.gg
+            org.universal-blue.pkg.kernel=<relver:kernel>
+            org.universal-blue.pkg.gamescope=<relver:gamescope>

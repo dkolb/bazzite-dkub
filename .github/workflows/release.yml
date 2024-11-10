@@ -1,0 +1,17 @@
+name: Bluebuild (Release)
+on:
+  schedule:
+    - cron: "00 12 * * *" # build at 06:00 UTC every day 
+                          # (20 minutes after last ublue images start building)
+  push:
+    branches:
+      - main
+    paths-ignore: # don't rebuild if only documentation has changed
+      - "**.md"
+jobs:
+  build-image:
+    uses: ./.github/workflows/build.yml
+    with:
+      image-tag: ${{ github.ref_name }}
+      recipes: '["main_build.yml"]'
+    secrets: inherit

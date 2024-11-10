@@ -1,6 +1,8 @@
-###########################################
-## containerfiles/prebuild/Containerfile ##
-###########################################
+############################################
+## containerfiles/buildargs/Containerfile ##
+############################################
+
+# The github workflow should completely overwrite this file.
 
 ARG GIT_BRANCH='localhost'
 ARG IMAGE_TAG='local'
