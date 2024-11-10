@@ -1,0 +1,8 @@
+###########################################
+## containerfiles/prebuild/Containerfile ##
+###########################################
+
+ARG GIT_BRANCH='localhost'
+ARG IMAGE_TAG='local'
+ARG GIT_REPO="https://github.com/dkolb/bazzite-dkub"
+ARG GIT_SHA='local-build'

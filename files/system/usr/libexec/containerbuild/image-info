@@ -2,10 +2,15 @@
 
 set -oue pipefail
 
-. /usr/libexec/containerbuild/image-info-gh-env
+IMAGE_INFO="/usr/share/ublue-os/image-info.json"
+BAZZITE_IMAGE_INFO="/usr/share/ublue-os/bazzite-image-info.json"
 
-IMAGE_BRANCH_NORMALIZED="$GH_BRANCH"
-IMAGE_PRETTY_NAME="Bazzite (DKub Edition) $OS_VERSION"
+FEDORA_VERSION=`jq -r '."fedora-version"' < $BAZZITE_IMAGE_INFO`  
+BASE_IMAGE_VERSION=-`jq -r '.version' < $BAZZITE_IMAGE_INFO`
+VERSION="$FEDORA_VERSION.$(date '+%Y%m%d')"
+
+IMAGE_BRANCH_NORMALIZED="$GIT_BRANCH"
+IMAGE_PRETTY_NAME="Bazzite (DKub Edition) $VERSION"
 IMAGE_LIKE="fedora"
 HOME_URL="https://github.com/dkolb/bazzite-dkub"
 DOCUMENTATION_URL="https://github.com/dkolb/bazzite-dkub"
@@ -15,12 +20,10 @@ LOGO_ICON="bazzite-logo-icon"
 LOGO_COLOR="0;38;2;138;43;226"
 CODE_NAME="Holographic"
 
-IMAGE_INFO="/usr/share/ublue-os/image-info.json"
 IMAGE_REF="ostree-image-signed:docker://$IMAGE_REGISTRY/$IMAGE_NAME"
 
-IMAGE_TAG="$OS_VERSION"
+# IMAGE_TAG="" (should come from containerfile ARGs)
 BASE_IMAGE_NAME="${BASE_IMAGE##*/}"
-VERSION="$OS_VERSION.$(date '+%Y%m%d')"
 VERSION_PRETTY="$IMAGE_BRANCH_NORMALIZED ($VERSION)"
 
 
@@ -28,19 +31,21 @@ VERSION_PRETTY="$IMAGE_BRANCH_NORMALIZED ($VERSION)"
 cat > $IMAGE_INFO <<EOF
 {
   "image-name": "$IMAGE_NAME",
-  "image-flavor": "$GH_BRANCH",
+  "image-flavor": "$GIT_BRANCH",
   "image-vendor": "$IMAGE_REGISTRY",
   "image-ref": "$IMAGE_REF",
   "image-tag": "$IMAGE_TAG",
   "image-branch": "$IMAGE_BRANCH_NORMALIZED",
+  "git-sha": "$GIT_SHA",
+  "git-repo": "$GIT_REPO",
   "base-image-name": "$BASE_IMAGE_NAME",
-  "fedora-version": "$OS_VERSION",
+  "fedora-version": "$FEDORA_VERSION",
   "version": "${VERSION:-N/A}",
   "version-pretty": "${VERSION_PRETTY:-N/A}"
 }
 EOF
 
-OS_RELEASE_PRETTY_NAME="Bazzite (DKub Edition) (From ${BASE_IMAGE}:${OS_VERSION})"
+OS_RELEASE_PRETTY_NAME="Bazzite (DKub Edition) $VERSION (From ${BASE_IMAGE}:${BASE_IMAGE_VERSION})"
 
 # OS Release File
 sed -i "s/^VARIANT_ID=.*/VARIANT_ID=$IMAGE_NAME/" /usr/lib/os-release
