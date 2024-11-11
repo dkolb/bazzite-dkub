@@ -42,6 +42,6 @@ modules:
       - enable-daily-ludsavi-backups.just
   - type: containerfile
     containerfiles:
-      - postbuild
+      - labels
   - type: signing
 

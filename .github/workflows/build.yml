@@ -42,13 +42,22 @@ jobs:
           fi
       - name: Build Image Info ARGS Containerfile
         working-directory: ./containerfiles/buildargs/
+        shell: bash
         run: |
           printf "###\n# containerfiles/buildargs/Containerfile\n###\n\n" > Containerfile
           echo "ARG GIT_BRANCH='${{ github.ref_name }}'" >> Containerfile
-          echo "ARG IMAGE_TAG='${{ steps.image-tag-name.outputs.image-tag }}'" >> Containerfile
+          echo "ARG IMAGE_TAG='${{ inputs.image-tag }}'" >> Containerfile
           echo "ARG GIT_REPO='${{ github.server_url }}/${{ github.repository }}'" >> Containerfile
           echo "ARG GIT_SHA='${{ github.sha }}'" >> Containerfile
           printf "###\nend file\n###\n\n"
+      - name: Build Image Lables Containerfile
+        working-directory: ./containerfiles/labels
+        shell: bash
+        run: |
+          printf "###\n# containerfiles/buildargs/Containerfile\n###\n\n" > Containerfile
+          echo "LABEL org.opencontainers.image.version \"41.`date '+%Y%m%d'`\"" >> Containerfile
+          echo "LABEL org.opencontainers.image.created \"`date -u +%Y-%m-%dT%H:%M:%SZ`\"" >> Containerfile
+          echo "LABEL org.opencontainers.image.url \"${{ github.server_url }}/${{ github.repository }}\"" >> Containerfile
       - name: Build Custom Image
         # uses: blue-build/github-action@v1.6
         uses: dkolb/bluebuild-github-action@fork-main
