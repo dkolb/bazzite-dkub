@@ -1,71 +1,367 @@
-name: bluebuild
+name: Build Bazzite DKUB EDITION
 on:
   schedule:
-    - cron: "00 12 * * *" # build at 06:00 UTC every day 
-                          # (20 minutes after last ublue images start building)
+    - cron: "40 4 * * 1" # 4:40 utc monday
+  pull_request:
+    branches:
+      - testing
+      - unstable
+    paths-ignore:
+      - "**.md"
   push:
     branches:
       - main
-    paths-ignore: # don't rebuild if only documentation has changed
+      - testing
+      - unstable
+    paths-ignore:
       - "**.md"
-      
-  pull_request:
-  workflow_dispatch: # allow manually triggering builds
+  workflow_dispatch:
+    inputs:
+      handwritten:
+        description: 'Small changelog:'
+      # Run with this periodically to analyze the image again
+      # As package drift will make the plan eventually non-ideal
+      # (existing users will have to redownload most of the image)
+      fresh-rechunk:
+        description: 'Clear rechunk history'
+        type: boolean
+        default: false
+env:
+  IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+  IMAGE_NAME: bazzite-dkub
+  FEDORA_VERSION: 41
+  BASE_IMAGE_REGISTRY: ghcr.io/ublue-os
+  BASE_IMAGE_NAME: bazzite-gnome
+  BASE_IMAGE_FLAVOR: main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
-  bluebuild:
-    name: Build Custom Image
-    runs-on: ubuntu-latest
+  push-ghcr:
+    name: Make
+    runs-on: ubuntu-24.04
+    continue-on-error: false
+    strategy: 
+      fail-fast: false
     permissions:
       contents: read
       packages: write
       id-token: write
-    strategy:
-      fail-fast: false # stop GH from cancelling all matrix builds if one fails
-      matrix:
-        recipe:
-          # !! Add your recipes here 
-          - recipe.yml
     steps:
-      - uses: actions/checkout@v4
-       # the build is fully handled by the reusable github action
-      - name: Determine IMAGE_TAG name
-        id: image-tag-name
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BRANCH: ${{ github.ref_name }}
-          PR_NUMBER: ${{ github.event.number }}
+      - name: Buildah Version
+        shell: bash
+        run: buildah version
+
+      - name: Define env.SHA_HEAD_SHORT
         run: |
-          if [ "$EVENT_NAME" = "pull_request" ]; then
-            echo "image-tag=pr${PR_NUMBER}" >> $GITHUB_OUTPUT
+          echo "SHA_HEAD_SHORT=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Define env.BASE_IMAGE_TAG
+        run: |
+          if [[ ${{ github.ref_name }} == "unstable" ]]; then
+            BASE_IMAGE_TAG="unstable-${FEDORA_VERSION}"
+          elif [[ ${{ github.ref_name }} == "testing" ]]; then
+            BASE_IMAGE_TAG="testing-${FEDORA_VERSION}"
           else
-            echo "image-tag=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+            BASE_IMAGE_TAG="stable-${FEDORA_VERSION}"
           fi
-      - name: Build Image Info ARGS Containerfile
-        working-directory: ./containerfiles/buildargs/
-        shell: bash
-        run: |
-          printf "###\n# containerfiles/buildargs/Containerfile\n###\n\n" > Containerfile
-          echo "ARG GIT_BRANCH='${{ github.ref_name }}'" >> Containerfile
-          echo "ARG IMAGE_TAG='${{ inputs.image-tag }}'" >> Containerfile
-          echo "ARG GIT_REPO='${{ github.server_url }}/${{ github.repository }}'" >> Containerfile
-          echo "ARG GIT_SHA='${{ github.sha }}'" >> Containerfile
-          printf "###\nend file\n###\n\n"
-      - name: Build Image Lables Containerfile
-        working-directory: ./containerfiles/labels
-        shell: bash
-        run: |
-          printf "###\n# containerfiles/buildargs/Containerfile\n###\n\n" > Containerfile
-          echo "LABEL org.opencontainers.image.version \"41.`date '+%Y%m%d'`\"" >> Containerfile
-          echo "LABEL org.opencontainers.image.created \"`date -u +%Y-%m-%dT%H:%M:%SZ`\"" >> Containerfile
-          echo "LABEL org.opencontainers.image.url \"${{ github.server_url }}/${{ github.repository }}\"" >> Containerfile
-      - name: Build Custom Image
-        uses: blue-build/github-action@v1.7
-        # uses: dkolb/bluebuild-github-action@fork-main
+
+          echo BASE_IMAGE_TAG="${BASE_IMAGE_TAG}" >> $GITHUB_ENV
+
+      - name: Verify main image
+        uses: EyeCantCU/cosign-action/verify@v0.3.0
         with:
-          recipe: ${{ matrix.recipe }}
-          cosign_private_key: ${{ secrets.SIGNING_SECRET }}
-          registry_token: ${{ github.token }}
-          pr_event_number: ${{ github.event.number }}
-          maximize_build_space: true
-          skip_checkout: true
-          build_opts: "--compression-format zstd"
+          containers: "${{ env.BASE_IMAGE_NAME }}:${{ env.BASE_IMAGE_TAG }}"
+          pubkey: https://raw.githubusercontent.com/ublue-os/bazzite/main/cosign.pub
+          registry: ${{ env.BASE_IMAGE_REGISTRY }}
+
+      # Checkout push-to-registry action GitHub repository
+      - name: Checkout Push to Registry action
+        uses: actions/checkout@v4
+
+      - name: Check just syntax
+        uses: ublue-os/just-action@v2
+
+      - name: Maximize build space
+        uses: ublue-os/remove-unwanted-software@v7
+
+      - name: Pull main, rechunk images
+        uses: Wandalen/wretry.action@v3.7.0
+        with:
+          attempt_limit: 3
+          attempt_delay: 15000
+          command: |
+            # pull the base images used for FROM in Containerfile so
+            # we can retry on that unfortunately common failure case
+            sudo podman pull ${{ env.BASE_IMAGE_REGISTRY }}/${{ env.BASE_IMAGE_NAME }}:${{ env.BASE_IMAGE_TAG }}
+
+            # Also go ahead and pull this for the rechunk action
+            sudo podman pull ghcr.io/hhd-dev/rechunk:v0.8.3
+
+      - name: Get source versions
+        id: labels
+        uses: Wandalen/wretry.action@v3.7.0
+        with:
+          attempt_limit: 3
+          attempt_delay: 15000
+          command: |
+            set -eo pipefail
+            skopeo inspect docker://${{ env.BASE_IMAGE_REGISTRY }}/${{ env.BASE_IMAGE_NAME }}:${{ env.BASE_IMAGE_TAG }} > source.json
+            ver=$(jq -r '.Labels["org.opencontainers.image.version"]' source.json)
+            if [ -z "$ver" ] || [ "null" = "$ver" ]; then
+              echo "inspected image version must not be empty or null"
+              exit 1
+            fi
+            echo "SOURCE_IMAGE_VERSION=$ver" >> $GITHUB_ENV
+      
+      # Generate a primary version key that appears
+      # in KDE, rpm-ostree status, and github.
+      - name: Generate Version
+        id: generate-version
+        shell: bash
+        run: |
+          # Generate the primary version key that will be stored on os-release,
+          # shown on the bootloader, and used for the image tag.
+          UPSTREAM_TAG="${{ env.SOURCE_IMAGE_VERSION }}"
+          # Remove .0 suffix from upstream tag so we can add our own and
+          # the wrong one does not end up in the image.
+          UPSTREAM_TAG="${UPSTREAM_TAG%.*}"
+          FEDORA_VERSION="${{ env.FEDORA_VERSION }}"
+          SHA_SHORT="${GITHUB_SHA::7}"
+
+          if [ -n "${{ github.event.pull_request.number }}" ]; then
+            VERSION="pr-${FEDORA_VERSION}-${{ github.event.pull_request.number }}"
+            PRETTY_VERSION="PR (${{ github.event.pull_request.number }}, ${UPSTREAM_TAG})"
+          elif [[ ${{ github.ref_name }} == "unstable" ]]; then
+            VERSION="unstable-${UPSTREAM_TAG}"
+            PRETTY_VERSION="Unstable (F${UPSTREAM_TAG}, #${SHA_SHORT})"
+          elif [[ ${{ github.ref_name }} == "testing" ]]; then
+            VERSION="testing-${UPSTREAM_TAG}"
+            PRETTY_VERSION="Testing (F${UPSTREAM_TAG}, #${SHA_SHORT})"
+          else
+            VERSION="${UPSTREAM_TAG}"
+            PRETTY_VERSION="Stable (F${UPSTREAM_TAG})"
+          fi
+          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+          echo "pretty=${PRETTY_VERSION}" >> $GITHUB_OUTPUT
+
+          echo "Generated the following:"
+          cat $GITHUB_OUTPUT
+
+      # Build image using buildah and save it to raw-img
+      - name: Build Image
+        id: build_image
+        run: |
+          sudo buildah build \
+            --build-arg BASE_IMAGE_FLAVOR=${{ env.BASE_IMAGE_FLAVOR }} \
+            --build-arg BASE_IMAGE_NAME=${{ env.BASE_IMAGE_NAME }} \
+            --build-arg BASE_IMAGE_REGISTRY=${{ env.BASE_IMAGE_REGISTRY }} \
+            --build-arg BASE_IMAGE_TAG=${{ env.BASE_IMAGE_TAG }} \
+            --build-arg BASE_IMAGE_VERSION=${{ env.SOURCE_IMAGE_VERSION }} \
+            --build-arg FEDORA_VERSION=${{ env.FEDORA_VERSION }} \
+            --build-arg GIT_REPO="${{ github.server_url }}/${{ github.repository }}" \
+            --build-arg IMAGE_BRANCH=${{ github.ref_name }} \
+            --build-arg IMAGE_NAME=${{ env.IMAGE_NAME }} \
+            --build-arg IMAGE_REGISTRY=${{ env.IMAGE_REGISTRY }} \
+            --build-arg IMAGE_VENDOR=${{ github.repository_owner }} \
+            --build-arg SHA_HEAD_SHORT=${{ env.SHA_HEAD_SHORT }} \
+            --build-arg VERSION_PRETTY="${{ steps.generate-version.outputs.pretty }}" \
+            --build-arg VERSION_TAG=${{ steps.generate-version.outputs.tag }} \
+            --tag raw-img .
+
+      - name: Remove auxiliary images
+        # We are tight on space, need at least 2x for OSTree
+        run: |
+          sudo podman image rm ${{ env.BASE_IMAGE_REGISTRY }}/${{ env.BASE_IMAGE_NAME }}:${{ env.BASE_IMAGE_TAG }}
+      
+      # Generate the previous image reference used by the Rechunker
+      - name: Generate previous reference
+        id: generate-prev-ref
+        shell: bash
+        run: |
+          if [ "${{ github.event.inputs.fresh-rechunk }}" == "true" ]; then
+            IMAGEREF=""
+          else
+            IMAGEREF="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:stable"
+          fi
+
+          echo "ref=${IMAGEREF}" >> $GITHUB_OUTPUT
+
+          echo "Generated the following:"
+          cat $GITHUB_OUTPUT
+
+      # Reprocess raw-img using rechunker which will delete it
+      - name: Run Rechonker
+        id: rechunk
+        uses: hhd-dev/rechunk@v1.0.1
+        with:
+          rechunk: 'ghcr.io/hhd-dev/rechunk:v1.0.1'
+          ref: 'raw-img'
+          prev-ref: '${{ steps.generate-prev-ref.outputs.ref }}'
+          version: '${{ steps.generate-version.outputs.tag }}'
+          skip_compression: 1
+          labels: |
+            io.artifacthub.package.logo-url=https://raw.githubusercontent.com/ublue-os/bazzite/main/repo_content/logo.png
+            io.artifacthub.package.readme-url=https://docs.bazzite.gg
+            org.opencontainers.image.created=<timestamp>
+            org.opencontainers.image.description=Bazzite DKub Edition is a lightly personalized Fedora Atomic image based off of Bazzite Gnome.
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/dkolb/bazzite-dkub
+            org.opencontainers.image.title=Bazzite
+            org.opencontainers.image.vendor=David Kolb <bazzite@dkub.dev>
+            org.opencontainers.image.url=https://github.com/dkolb/bazzite-dkub
+            org.universal-blue.pkg.kernel=<relver:kernel>
+            org.universal-blue.pkg.gamescope=<relver:gamescope>
+      
+      # Generate tags after rechunker runs and checks the primary tag is not duplicated
+      # If it is, rechunk will suffix it by .1, .2, etc and put it in steps.rechunk.outputs.version
+      - name: Generate tags
+        id: generate-tags
+        shell: bash
+        run: |
+          # Common vars for generating tags
+          VERSION_TAG="${{ steps.rechunk.outputs.version }}"
+          UPSTREAM_TAG="${{ env.SOURCE_IMAGE_VERSION }}"
+          FEDORA_VERSION="${{ env.FEDORA_VERSION }}"
+          SHA_SHORT="${GITHUB_SHA::7}"
+          BUILD_TAGS=(  )
+
+          # Use latest var to check if we should tag as latest
+          unset LATEST
+          # If you build more than one version of Fedora do checks here
+          # so you don't set LATEST on older versions.
+          LATEST="1"
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # Track latest ver per PR
+            if [ -n "$LATEST" ]; then
+                BUILD_TAGS+=("pr-${{ github.event.pull_request.number }}" )
+            fi
+          elif [[ ${{ github.ref_name }} == "unstable" ]]; then
+            # Per fedora version
+            BUILD_TAGS+=("${FEDORA_VERSION}-unstable")
+            BUILD_TAGS+=("unstable-${FEDORA_VERSION}" "unstable-${VERSION_TAG}")
+
+            if [ -n "$LATEST" ]; then
+                BUILD_TAGS+=("unstable")
+            fi
+          elif [[ ${{ github.ref_name }} == "testing" ]]; then
+            # Per fedora version
+            BUILD_TAGS+=("${FEDORA_VERSION}-testing")
+            BUILD_TAGS+=("testing-${FEDORA_VERSION}" "testing-${VERSION_TAG}")
+
+            if [ -n "$LATEST" ]; then
+                BUILD_TAGS+=("testing")
+            fi
+          elif [[ ${{ github.ref_name }} == "main" ]]; then
+            BUILD_TAGS+=("${FEDORA_VERSION}")
+            BUILD_TAGS+=("stable-${VERSION_TAG}")
+            BUILD_TAGS+=("stable-${FEDORA_VERSION}")
+            
+            if [ -n "$LATEST" ]; then
+              BUILD_TAGS+=("latest" "edge")
+            fi
+          else
+            BUILD_TAGS+=("${{ github.ref_name }}-${SHA_SHORT}")
+          fi
+          
+          echo "Generated the following build tags: "
+          for TAG in "${BUILD_TAGS[@]}"; do
+              echo "${TAG}"
+          done
+          echo "alias_tags=${BUILD_TAGS[*]}" >> $GITHUB_OUTPUT
+
+      # Pull oci-dir image, remove oci dir to make space, and then tag appropriately
+      - name: Load in podman and tag
+        run: |
+          IMAGE=$(podman pull ${{ steps.rechunk.outputs.ref }})
+          sudo rm -rf ${{ steps.rechunk.outputs.output }}
+          for tag in ${{ steps.generate-tags.outputs.alias_tags }}; do
+            podman tag $IMAGE ${{ env.IMAGE_NAME }}:$tag
+          done
+          # keep for secureboot check
+          podman tag $IMAGE rechunked-img
+
+      # - name: Check Secureboot
+      #   shell: bash
+      #   run: |
+      #     set -x
+      #     if [[ ! $(command -v sbverify) || ! $(command -v curl) || ! $(command -v openssl) ]]; then
+      #       sudo apt update
+      #       sudo apt install sbsigntool curl openssl
+      #     fi
+      #     TMP=$(podman create rechunked-img bash)
+      #     podman cp $TMP:/usr/lib/modules/${{ matrix.kernel_version }}/vmlinuz .
+      #     podman rm $TMP
+      #     sbverify --list vmlinuz
+      #     curl --retry 3 -Lo kernel-sign.der https://github.com/ublue-os/kernel-cache/raw/main/certs/public_key.der
+      #     curl --retry 3 -Lo akmods.der https://github.com/ublue-os/kernel-cache/raw/main/certs/public_key_2.der
+      #     openssl x509 -in kernel-sign.der -out kernel-sign.crt
+      #     openssl x509 -in akmods.der -out akmods.crt
+      #     sbverify --cert kernel-sign.crt vmlinuz || exit 1
+      #     sbverify --cert akmods.crt vmlinuz || exit 1
+
+      # Workaround bug where capital letters in your GitHub username make it impossible to push to GHCR.
+      # https://github.com/macbre/push-to-ghcr/issues/12
+      - name: Lowercase Registry
+        id: registry_case
+        uses: ASzc/change-string-case-action@v6
+        with:
+          string: ${{ env.IMAGE_REGISTRY }}
+
+      # Push the image to GHCR (Image Registry)
+      - name: Push To GHCR
+        uses: Wandalen/wretry.action@v3.7.0
+        id: push
+        if: github.event_name != 'pull_request'
+        env:
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ github.token }}
+        with:
+          action: redhat-actions/push-to-registry@v2
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            image: ${{ env.IMAGE_NAME }}
+            tags: ${{ steps.generate-tags.outputs.alias_tags }}
+            registry: ${{ steps.registry_case.outputs.lowercase }}
+            username: ${{ env.REGISTRY_USER }}
+            password: ${{ env.REGISTRY_PASSWORD }}
+            extra-args: |
+              --compression-format=zstd:chunked
+
+      - name: Sign container image
+        uses: EyeCantCU/cosign-action/sign@v0.3.0
+        if: github.event_name != 'pull_request'
+        with:
+          containers: ${{ env.IMAGE_NAME }}
+          registry: ghcr.io/dkolb
+          registry-token: ${{ secrets.GITHUB_TOKEN }}
+          signing-secret: ${{ secrets.SIGNING_SECRET }}
+          tags: ${{ steps.push.outputs.outputs && fromJSON(steps.push.outputs.outputs).digest }}
+
+      - name: Echo outputs
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "${{ toJSON(steps.push.outputs) }}"
+
+  generate_release:
+    name: Generate Release
+    needs: [push-ghcr]
+    if: github.event_name != 'pull_request' && contains(fromJSON('["main", "testing", "unstable"]'), github.ref_name)
+    permissions:
+      contents: write
+    secrets: inherit
+    uses: ./.github/workflows/generate_release.yml
+
+  # build_iso:
+  #   name: Build ISO
+  #   needs: [push-ghcr]
+  #   if: github.ref_name == 'testing'
+  #   # Eventually would be nice for building images in PRs
+  #   # if: ${{ endsWith(github.event.pull_request.title, '[ISO]') }}
+  #   uses: ./.github/workflows/build_iso.yml
+  #   secrets: inherit
