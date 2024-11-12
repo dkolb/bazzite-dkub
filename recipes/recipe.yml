@@ -44,4 +44,3 @@ modules:
     containerfiles:
       - labels
   - type: signing
-
