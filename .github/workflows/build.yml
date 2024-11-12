@@ -59,8 +59,8 @@ jobs:
           echo "LABEL org.opencontainers.image.created \"`date -u +%Y-%m-%dT%H:%M:%SZ`\"" >> Containerfile
           echo "LABEL org.opencontainers.image.url \"${{ github.server_url }}/${{ github.repository }}\"" >> Containerfile
       - name: Build Custom Image
-        # uses: blue-build/github-action@v1.6
-        uses: dkolb/bluebuild-github-action@fork-main
+        uses: blue-build/github-action@v1.7
+        # uses: dkolb/bluebuild-github-action@fork-main
         with:
           recipe: ${{ matrix.recipe }}
           cosign_private_key: ${{ secrets.SIGNING_SECRET }}
