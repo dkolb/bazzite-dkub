@@ -20,8 +20,8 @@ setup-ludusavi ACTION="":
       echo "Useage: ujust setup-ludusavi <option>"
       echo "  <option>: Specify the quick option to skip the prompt"
       echo "  Use 'install' to install Ludusavi Flatpak"
-      echo "  Use 'remove' to remove Sunshine"
-      echo "  Use 'autostart' to select Toggle Autostart"
+      echo "  Use 'remove' to remove Ludusavi"
+      echo "  Use 'autostart' to select Toggle Daily backups"
       exit 0
     elif [ "$OPTION" == "" ]; then
       echo "${bold}Ludusavi setup and configuration${normal}"
