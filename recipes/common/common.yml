@@ -17,6 +17,11 @@ modules:
       - code
       - hardinfo2
       - firefox
+  - type: fonts
+    fonts:
+      nerd-fonts:
+        - Nerd Fonts Symbols Only
+        - Hack
   - type: default-flatpaks
     notify: true
     system:

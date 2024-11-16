@@ -1,0 +1,8 @@
+name: bazzite-dkub
+description: This is my personal OS image.
+base-image: ghcr.io/ublue-os/bazzite-gnome
+image-version: unstable
+alt-tags:
+  - unstable
+modules:
+  - from-file: common/common.yml
