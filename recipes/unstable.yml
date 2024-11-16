@@ -6,3 +6,6 @@ alt-tags:
   - unstable
 modules:
   - from-file: common/common.yml
+  - type: containerfile
+    snippets:
+      - RUN rm /usr/lib/systemd/system-sleep/bluetooth-hack
