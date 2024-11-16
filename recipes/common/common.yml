@@ -17,11 +17,6 @@ modules:
       - code
       - hardinfo2
       - firefox
-      - docker-ce
-      - docker-ce-cli
-      - containerd.io
-      - docker-buildx-plugin
-      - docker-compose-plugin
   - type: default-flatpaks
     notify: true
     system:

@@ -1,4 +1,5 @@
-name: bluebuild
+name: "Build Bazzite DKUB Edition"
+# run-name: "Build for ${{ github.event_name == "pull_request" && format("PR:{0}", github.event.number) || github.ref_name }}"
 on:
   schedule:
     - cron: "00 12 * * *" # build at 06:00 UTC every day 
@@ -6,6 +7,7 @@ on:
   push:
     branches:
       - main
+      - testing
     paths-ignore: # don't rebuild if only documentation has changed
       - "**.md"
       
@@ -29,11 +31,31 @@ jobs:
           BRANCH: ${{ github.ref_name }}
           PR_NUMBER: ${{ github.event.number }}
         run: |
-          if [ "$EVENT_NAME" = "pull_request" ]; then
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
             echo "image-tag=pr${PR_NUMBER}" >> $GITHUB_OUTPUT
           else
             echo "image-tag=${BRANCH_NAME}" >> $GITHUB_OUTPUT
           fi
+      - name: Determine RECIPE_FILE
+        id: recipe-file-name
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BRANCH: ${{ github.ref_name }}
+          TARGET_BRANCH: ${{ github.base_ref }}
+        shell: bash
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            BRANCH=$TARGET_BRANCH
+          fi
+
+          if [[ -f "recipes/$BRANCH.yml" ]]; then
+            echo "recipe-file=$BRANCH.yml" >> $GITHUB_OUTPUT
+          else
+            echo "ERROR: Cannot determine what recipe to run."
+            echo "       ./recipes/$BRANCH.yml is not a readable file."
+            exit 1
+          fi
+          exit 0
       - name: Build Image Info ARGS Containerfile
         working-directory: ./containerfiles/buildargs/
         shell: bash
@@ -56,7 +78,7 @@ jobs:
         uses: blue-build/github-action@v1.7
         # uses: dkolb/bluebuild-github-action@fork-main
         with:
-          recipe: ${{ matrix.recipe }}
+          recipe: ${{ steps.recipe-file-name.outputs.recipe-file }}
           cosign_private_key: ${{ secrets.SIGNING_SECRET }}
           registry_token: ${{ github.token }}
           pr_event_number: ${{ github.event.number }}

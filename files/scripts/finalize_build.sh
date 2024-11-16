@@ -5,7 +5,9 @@ mv /usr/share/ublue-os/image-info.json /usr/share/ublue-os/bazzite-image-info.js
 KERNEL_FLAVOR=bazzite /usr/libexec/containerbuild/build-initramfs
 
 if ! grep -qE '^docker:' /etc/group; then
-  grep -E '^docker:' /usr/lib/group >> /etc/group
+  # There may not be a docker group to copy to /etc, so 
+  # || true hides the failed status.
+  grep -E '^docker:' /usr/lib/group >> /etc/group || true 
 fi
 
 exit 0
