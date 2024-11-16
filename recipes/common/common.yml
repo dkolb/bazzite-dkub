@@ -36,10 +36,8 @@ modules:
   - type: justfiles
     include:
       - enable-daily-ludsavi-backups.just
-  - type: script
-    scripts:
-      - finalize_build.sh
   - type: containerfile
     containerfiles:
+      - imageinfo
       - labels
   - type: signing
