@@ -19,12 +19,6 @@ jobs:
       contents: read
       packages: write
       id-token: write
-    strategy:
-      fail-fast: false # stop GH from cancelling all matrix builds if one fails
-      matrix:
-        recipe:
-          # !! Add your recipes here 
-          - recipe.yml
     steps:
       - uses: actions/checkout@v4
        # the build is fully handled by the reusable github action
@@ -46,7 +40,7 @@ jobs:
         run: |
           printf "###\n# containerfiles/buildargs/Containerfile\n###\n\n" > Containerfile
           echo "ARG GIT_BRANCH='${{ github.ref_name }}'" >> Containerfile
-          echo "ARG IMAGE_TAG='${{ inputs.image-tag }}'" >> Containerfile
+          echo "ARG IMAGE_TAG='${{ steps.image-tag-name.outputs.image-tag }}'" >> Containerfile
           echo "ARG GIT_REPO='${{ github.server_url }}/${{ github.repository }}'" >> Containerfile
           echo "ARG GIT_SHA='${{ github.sha }}'" >> Containerfile
           printf "###\nend file\n###\n\n"
