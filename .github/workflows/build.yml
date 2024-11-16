@@ -7,21 +7,40 @@ on:
   push:
     branches:
       - main
-      - testing
-      - unstable
+      - dev
     paths-ignore: # don't rebuild if only documentation has changed
       - "**.md"
       
   pull_request:
   workflow_dispatch: # allow manually triggering builds
 jobs:
+  determine-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix-selection.outputs.matrix }}
+    steps:
+      - id: matrix-selection
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          if [[ "$BRANCH" == "main" && "$EVENT_NAME" != "pull_request" ]]; then
+            echo 'matrix={"recipe": ["stable.yml", "testing.yml", "unstable.yml"]}' >> $GITHUB_OUTPUT
+          else
+            echo 'matrix={"recipe": ["stable.yml"]}' >> $GITHUB_OUTPUT
+          fi
   bluebuild:
     name: Build Custom Image
     runs-on: ubuntu-latest
+    needs: [determine-matrix]
     permissions:
       contents: read
       packages: write
       id-token: write
+    strategy:
+      matrix: ${{ fromJson(needs.determine-matrix.outputs.matrix) }}
+      fail-fast: true
     steps:
       - uses: actions/checkout@v4
        # the build is fully handled by the reusable github action
@@ -37,26 +56,6 @@ jobs:
           else
             echo "image-tag=${BRANCH_NAME}" >> $GITHUB_OUTPUT
           fi
-      - name: Determine RECIPE_FILE
-        id: recipe-file-name
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BRANCH: ${{ github.ref_name }}
-          TARGET_BRANCH: ${{ github.base_ref }}
-        shell: bash
-        run: |
-          if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            BRANCH=$TARGET_BRANCH
-          fi
-
-          if [[ -f "recipes/$BRANCH.yml" ]]; then
-            echo "recipe-file=$BRANCH.yml" >> $GITHUB_OUTPUT
-          else
-            echo "ERROR: Cannot determine what recipe to run."
-            echo "       ./recipes/$BRANCH.yml is not a readable file."
-            exit 1
-          fi
-          exit 0
       - name: Build Image Info ARGS Containerfile
         working-directory: ./containerfiles/buildargs/
         shell: bash
@@ -79,7 +78,7 @@ jobs:
         uses: blue-build/github-action@v1.7
         # uses: dkolb/bluebuild-github-action@fork-main
         with:
-          recipe: ${{ steps.recipe-file-name.outputs.recipe-file }}
+          recipe: ${{ matrix.recipe }}
           cosign_private_key: ${{ secrets.SIGNING_SECRET }}
           registry_token: ${{ github.token }}
           pr_event_number: ${{ github.event.number }}
