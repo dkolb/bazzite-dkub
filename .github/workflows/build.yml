@@ -53,8 +53,10 @@ jobs:
         run: |
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
             echo "image-tag=pr${PR_NUMBER}" >> $GITHUB_OUTPUT
+          elif [[ "$BRANCH" == "main" ]]; then
+            echo "image-tag=stable" >> $GITHUB_OUTPUT
           else
-            echo "image-tag=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+            echo "image-tag=br-${BRANCH_NAME}" >> $GITHUB_OUTPUT
           fi
       - name: Build Image Info ARGS Containerfile
         working-directory: ./containerfiles/buildargs/
