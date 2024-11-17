@@ -74,7 +74,7 @@ jobs:
           RECIPE: ${{ matrix.recipe }}
         run: |
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            IMAGE_TAG="pr${PR_NUMBER}"
+            IMAGE_TAG="pr-${PR_NUMBER}-${BASE_IMAGE_TAG}"
           elif [[ "$BRANCH" == "main" ]]; then
             IMAGE_TAG="${BASE_IMAGE_TAG}"
           else
@@ -186,14 +186,14 @@ jobs:
           for TAG in "${BUILD_TAGS[@]}"; do
             echo "- ${TAG}"
           done
-          echo "alias_tags=${BUILD_TAGS[*]}" >> $GITHUB_OUTPUT
+          echo "alias-tags=${BUILD_TAGS[*]}" >> $GITHUB_OUTPUT
       # Pull oci-dir image, remove oci dir to make space, and then tag appropriately
       - name: Load in podman and tag
         shell: bash
         run: |
           IMAGE=$(podman pull ${{ steps.rechunk.outputs.ref }})
           sudo rm -rf ${{ steps.rechunk.outputs.location }}
-          for tag in ${{ steps.generate-tags.outputs.alias_tags }}; do
+          for tag in ${{ steps.generate-tags.outputs.alias-tags }}; do
             podman tag $IMAGE bazzite-dkub:$tag
           done
       - name: Push To GHCR
@@ -205,7 +205,7 @@ jobs:
           REGISTRY_PASSWORD: ${{ github.token }}
         with:
           image: bazzite-dkub
-          tags: ${{ steps.generate-tags.outputs.alias_tags }}
+          tags: ${{ steps.generate-tags.outputs.alias-tags }}
           registry: ${{ env.IMAGE_REPO }}
           username: ${{ env.REGISTRY_USER }}
           password: ${{ env.REGISTRY_PASSWORD }}

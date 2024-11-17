@@ -1,5 +1,8 @@
 {
   "yaml.schemas": {
-    "https://schema.blue-build.org/recipe-v1.json": "recipes/**/*.yml"
-  }
+    "https://schema.blue-build.org/recipe-v1.json": "recipes/**/*.yml",
+    "https://json.schemastore.org/github-action.json": ".github/actions/**/action.yml"
+  },
+  "github-actions.use-enterprise": false,
+  "github-enterprise.uri": null
 }
