@@ -1,21 +1,24 @@
 name: "Build Bazzite DKUB Edition"
-run-name: "Build for ${{ github.event_name == 'pull_request' && format('PR:{0}', github.event.number) || github.ref_name }}"
+run-name: "Bazzite Build for ${{ github.event_name == 'pull_request' && format('PR:{0}', github.event.number) || github.ref_name }}"
 on:
   schedule:
-    - cron: "00 12 * * *" # build at 06:00 UTC every day 
-                          # (20 minutes after last ublue images start building)
+    - cron: "00 12 * * *" 
   push:
     branches:
       - main
       - dev
     paths-ignore: # don't rebuild if only documentation has changed
       - "**.md"
-      
   pull_request:
   workflow_dispatch: # allow manually triggering builds
+    inputs:
+      clear-plan:
+        description: Tick to rechunk with no prior reference.
+        type: boolean
+        default: false
 jobs:
   determine-matrix:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.matrix-selection.outputs.matrix }}
     steps:
@@ -41,43 +44,104 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.determine-matrix.outputs.matrix) }}
       fail-fast: true
+    env:
+      BASE_IMAGE_REPO: ghcr.io/ublue-os
+      BASE_IMAGE_NAME: bazzite-gnome
+      IMAGE_NAME: bazzite-dkub
+      IMAGE_REPO: ghcr.io/${{ github.repository_owner }}
     steps:
-      - uses: actions/checkout@v4
-       # the build is fully handled by the reusable github action
-      - name: Determine IMAGE_TAG name
-        id: image-tag-name
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Determine FEDORA_VERSION
+        id: fedora-version
+        shell: bash
+        env:
+          RECIPE: ${{ matrix.recipe }}
+        run: |
+          TAG=${RECIPE%%.yml}
+          echo "BASE_IMAGE_TAG=${TAG}" | tee -a $GITHUB_ENV
+          LABEL=$(skopeo inspect docker://${BASE_IMAGE_REPO}/${BASE_IMAGE_NAME}:${TAG} | jq -r '.Labels."org.opencontainers.image.version"')
+          FEDORA_VERSION=${LABEL%%.*}
+          echo "fedora-version=$FEDORA_VERSION" | tee -a $GITHUB_OUTPUT
+      - name: Determine IMAGE_TAG and BB_IMAGE_TAG
+        id: basic-image-tags
+        shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
           BRANCH: ${{ github.ref_name }}
           PR_NUMBER: ${{ github.event.number }}
+          FEDORA_VERSION: ${{ steps.fedora-version.outputs.fedora-version }}
+          RECIPE: ${{ matrix.recipe }}
         run: |
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            echo "image-tag=pr${PR_NUMBER}" >> $GITHUB_OUTPUT
+            IMAGE_TAG="pr${PR_NUMBER}"
           elif [[ "$BRANCH" == "main" ]]; then
-            echo "image-tag=stable" >> $GITHUB_OUTPUT
+            IMAGE_TAG="${BASE_IMAGE_TAG}"
           else
-            echo "image-tag=br-${BRANCH_NAME}" >> $GITHUB_OUTPUT
+            IMAGE_TAG="br-${BRANCH}-${BASE_IMAGE_TAG}"
           fi
+          echo "bb-image-tag=${IMAGE_TAG}-${FEDORA_VERSION}" | tee -a $GITHUB_OUTPUT
+          echo "image-tag=${IMAGE_TAG}" | tee -a $GITHUB_OUTPUT
+      
+      # You need to do this before bluebuild to capture the exact digest
+      - name: Determine previous ref for rechunk
+        id: rechunk-prev-ref
+        shell: bash
+        env:
+          FEDORA_VERSION: ${{ steps.fedora-version.outputs.fedora-version }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          IMAGE_TAG: ${{ steps.basic-image-tags.outputs.image-tag }}
+        run: |
+          if skopeo inspect docker://${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_TAG} >skopeo.tmp 2>/dev/null; then
+            DIGEST=$( jq -r .Digest skopeo.tmp )
+            PREV_REF="${IMAGE_REPO}/${IMAGE_NAME}@${DIGEST}"
+          else
+            PREV_REF=""
+          fi
+          rm -f skopeo.tmp || true
+          echo "rechunk-prev-ref=${PREV_REF}" | tee -a $GITHUB_OUTPUT
       - name: Build Image Info ARGS Containerfile
         working-directory: ./containerfiles/buildargs/
         shell: bash
         run: |
           printf "###\n# containerfiles/buildargs/Containerfile\n###\n\n" > Containerfile
           echo "ARG GIT_BRANCH='${{ github.ref_name }}'" >> Containerfile
-          echo "ARG IMAGE_TAG='${{ steps.image-tag-name.outputs.image-tag }}'" >> Containerfile
+          echo "ARG IMAGE_TAG='${{ steps.basic-image-tags.outputs.bb-image-tag }}'" >> Containerfile
           echo "ARG GIT_REPO='${{ github.server_url }}/${{ github.repository }}'" >> Containerfile
           echo "ARG GIT_SHA='${{ github.sha }}'" >> Containerfile
-          printf "###\nend file\n###\n\n"
-      - name: Build Image Lables Containerfile
+          printf "###\n# end file\n###\n\n" >> Containerfile
+      - name: Build Image Labels Containerfile and Output
+        id: image-labels
         working-directory: ./containerfiles/labels
         shell: bash
+        env:
+          FEDORA_VERSION: ${{ steps.fedora-version.outputs.fedora-version }}
         run: |
           # Append Only to this file since it already has our vendor label
-          echo "LABEL org.opencontainers.image.version=\"41.`date '+%Y%m%d'`\"" >> Containerfile
+          echo "" >> Containerfile
+          echo "LABEL org.opencontainers.image.version=\"${FEDORA_VERSION}.`date '+%Y%m%d'`\"" >> Containerfile
           echo "LABEL org.opencontainers.image.created=\"`date -u +%Y-%m-%dT%H:%M:%SZ`\"" >> Containerfile
+          echo "LABEL org.opencontainers.image.description=\"A personal customization of the Bazzite OS image\"" >> Containerfile
           echo "LABEL org.opencontainers.image.url=\"${{ github.server_url }}/${{ github.repository }}\"" >> Containerfile
+          echo "LABEL org.opencontainers.image.revision=\"${{ github.sha }}\"" >> Containerfile
+          echo "LABEL org.opencontainers.image.licenses=\"Apache-2.0\"" >> Containerfile
+          echo "LABEL org.opencontainers.image.revision=\"${{ github.sha }}\"" >> Containerfile
+          echo "LABEL org.opencontainers.image.source=\"${{ github.server_url }}/${{ github.repository }}\"" >> Containerfile
+          echo "LABEL org.opencontainers.image.title=\"Bazzite DKUB Edition\"" >> Containerfile
+          printf "###\n# end file\n###\n\n" >> Containerfile
+
+          {
+            echo 'image-labels<<EOF348'
+            cat ./Containerfile | sed -ne 's/^LABEL //p' | sed 's/"//g'
+            echo "io.artifacthub.package.logo-url=https://raw.githubusercontent.com/ublue-os/bazzite/main/repo_content/logo.png"
+            echo "io.artifacthub.package.readme-url=${{ github.server_url }}/${{ github.repository }}"
+            echo "org.opencontainers.image.created=<timestamp>"
+            echo "org.universal-blue.pkg.kernel=<relver:kernel>"
+            echo "org.universal-blue.pkg.gamescope=<relver:gamescope>"
+            echo 'EOF348'
+          } | tee -a $GITHUB_OUTPUT
       - name: Build Custom Image
-        uses: blue-build/github-action@v1.7
+        uses: blue-build/github-action@33ee8cc4011b0d47666ea7026d08bb5b941ac90c # v1.7
         with:
           recipe: ${{ matrix.recipe }}
           cosign_private_key: ${{ secrets.SIGNING_SECRET }}
@@ -85,4 +149,74 @@ jobs:
           pr_event_number: ${{ github.event.number }}
           maximize_build_space: true
           skip_checkout: true
-          build_opts: "--compression-format zstd"
+          squash: true
+      - name: Rechonk It
+        id: rechunk
+        uses: hhd-dev/rechunk@602e6d62558ab23e15e8764ce06e26c0f328da71 # v1.0.1
+        with:
+          rechunk: 'ghcr.io/hhd-dev/rechunk:v1.0.1'
+          ref: "${{ env.IMAGE_REPO }}/${{ env.IMAGE_NAME }}:${{ steps.basic-image-tags.outputs.bb-image-tag }}"
+          prev-ref: ${{ steps.rechunk-prev-ref.outputs.rechunk-prev-ref }}
+          version: "${{ steps.fedora-version.outputs.fedora-version }}.<date>"
+          clear-plan: ${{ steps.rechunk-prev-ref.outputs.rechunk-prev-ref == '' && 'true' || 'false' }}
+          prev-ref-fail: false # Maybe set to true once builds stablilize
+          labels: ${{ steps.image-labels.outputs.image-labels }}
+          skip_compression: true
+      - name: Generate tags
+        id: generate-tags
+        shell: bash
+        env:
+          VERSION_TAG: ${{ steps.rechunk.outputs.version }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          IMAGE_TAG: ${{ steps.basic-image-tags.outputs.image-tag }}
+        run: |
+          BUILD_TAGS=( "${GITHUB_SHA::7}" )
+          BUILD_TAGS+=( "$IMAGE_TAG" )
+
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            if [[ "$BRANCH_NAME" == "main" ]]; then
+              BUILD_TAGS+=( "$VERSION_TAG" )
+            else
+              BUILD_TAGS+=( "${BRANCH_NAME}-${VERSION_TAG}" )
+            fi
+          fi
+
+          echo "Generated the following build tags:"
+          for TAG in "${BUILD_TAGS[@]}"; do
+            echo "- ${TAG}"
+          done
+          echo "alias_tags=${BUILD_TAGS[*]}" >> $GITHUB_OUTPUT
+      # Pull oci-dir image, remove oci dir to make space, and then tag appropriately
+      - name: Load in podman and tag
+        shell: bash
+        run: |
+          IMAGE=$(podman pull ${{ steps.rechunk.outputs.ref }})
+          sudo rm -rf ${{ steps.rechunk.outputs.location }}
+          for tag in ${{ steps.generate-tags.outputs.alias_tags }}; do
+            podman tag $IMAGE bazzite-dkub:$tag
+          done
+      - name: Push To GHCR
+        id: push
+        if: github.event_name != 'pull_request'
+        uses: redhat-actions/push-to-registry@5ed88d269cf581ea9ef6dd6806d01562096bee9c # v2.8
+        env:
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ github.token }}
+        with:
+          image: bazzite-dkub
+          tags: ${{ steps.generate-tags.outputs.alias_tags }}
+          registry: ${{ env.IMAGE_REPO }}
+          username: ${{ env.REGISTRY_USER }}
+          password: ${{ env.REGISTRY_PASSWORD }}
+          extra-args: |
+            --compression-format=zstd:chunked
+      - name: Sign container image
+        uses: EyeCantCU/cosign-action/sign@acdb6860c5c0f84c4c08f0d5aeb81354d37b6720 # v0.3.0
+        if: github.event_name != 'pull_request'
+        with:
+          containers: ${{ env.IMAGE_NAME }}
+          registry: ${{ env.IMAGE_REPO }}
+          registry-token: ${{ secrets.GITHUB_TOKEN }}
+          signing-secret: ${{ secrets.SIGNING_SECRET }}
+          tags: ${{ steps.push.outputs.digest }}

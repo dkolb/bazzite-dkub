@@ -2,7 +2,7 @@
 ## containerfiles/labels/Containerfile   ##
 ###########################################
 ## Static Labels you can add here
-LABEL org.opencontainers.image.vendor="David Kolb <git@dkub.dev>"
+LABEL org.opencontainers.image.vendor="David Kolb; git@dkub.dev"
 
 ## Dynamic Labels the github workflow should append into this file:
 # - org.opencontainers.image.version
