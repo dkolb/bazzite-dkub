@@ -141,21 +141,24 @@ jobs:
             echo 'EOF348'
           } | tee -a $GITHUB_OUTPUT
       - name: Build Custom Image
-        uses: blue-build/github-action@33ee8cc4011b0d47666ea7026d08bb5b941ac90c # v1.7
+        uses: ./.github/actions/bb-generate
         with:
           recipe: ${{ matrix.recipe }}
-          cosign_private_key: ${{ secrets.SIGNING_SECRET }}
-          registry_token: ${{ github.token }}
-          pr_event_number: ${{ github.event.number }}
+          output_file: ./Containerfile
           maximize_build_space: true
-          skip_checkout: true
-          squash: true
+      - name: Check buildah version
+        shell: bash
+        run:
+          buildah --version
+      - name: Build Image
+        shell: bash
+        run: buildah build -t raw-img .
       - name: Rechonk It
         id: rechunk
         uses: hhd-dev/rechunk@602e6d62558ab23e15e8764ce06e26c0f328da71 # v1.0.1
         with:
           rechunk: 'ghcr.io/hhd-dev/rechunk:v1.0.1'
-          ref: "${{ env.IMAGE_REPO }}/${{ env.IMAGE_NAME }}:${{ steps.basic-image-tags.outputs.bb-image-tag }}"
+          ref: "raw-img"
           prev-ref: ${{ steps.rechunk-prev-ref.outputs.rechunk-prev-ref }}
           version: "${{ steps.fedora-version.outputs.fedora-version }}.<date>"
           clear-plan: ${{ steps.rechunk-prev-ref.outputs.rechunk-prev-ref == '' && 'true' || 'false' }}
