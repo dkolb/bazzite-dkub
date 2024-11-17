@@ -1,0 +1,7 @@
+##########################%%%###############
+## containerfiles/imageinfo/Containerfile ##
+############################################
+RUN \ 
+  mv /usr/share/ublue-os/image-info.json /usr/share/ublue-os/bazzite-image-info.json && \
+  /usr/libexec/containerbuild/image-info && \
+  KERNEL_FLAVOR=bazzite /usr/libexec/containerbuild/build-initramfs

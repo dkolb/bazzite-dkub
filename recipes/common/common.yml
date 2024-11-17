@@ -9,14 +9,17 @@ modules:
   - type: rpm-ostree
     repos:
       - vscode.repo
-      - docker-ce.repo
     keys:
       - https://packages.microsoft.com/keys/microsoft.asc
-      - https://download.docker.com/linux/fedora/gpg
     install:
       - code
       - hardinfo2
       - firefox
+  - type: fonts
+    fonts:
+      nerd-fonts:
+        - Nerd Fonts Symbols Only
+        - Hack
   - type: default-flatpaks
     notify: true
     system:
@@ -31,10 +34,8 @@ modules:
   - type: justfiles
     include:
       - enable-daily-ludsavi-backups.just
-  - type: script
-    scripts:
-      - finalize_build.sh
   - type: containerfile
     containerfiles:
+      - imageinfo
       - labels
   - type: signing
