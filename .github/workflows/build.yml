@@ -43,7 +43,7 @@ jobs:
       id-token: write
     strategy:
       matrix: ${{ fromJson(needs.determine-matrix.outputs.matrix) }}
-      fail-fast: true
+      fail-fast: false
     env:
       BASE_IMAGE_REPO: ghcr.io/ublue-os
       BASE_IMAGE_NAME: bazzite-gnome
