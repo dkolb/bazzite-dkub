@@ -60,7 +60,6 @@ jobs:
           echo "LABEL org.opencontainers.image.url \"${{ github.server_url }}/${{ github.repository }}\"" >> Containerfile
       - name: Build Custom Image
         uses: blue-build/github-action@v1.8
-        # uses: dkolb/bluebuild-github-action@fork-main
         with:
           recipe: ${{ matrix.recipe }}
           cosign_private_key: ${{ secrets.SIGNING_SECRET }}
@@ -69,3 +68,4 @@ jobs:
           maximize_build_space: true
           skip_checkout: true
           build_opts: "--compression-format zstd"
+          rechunk: true
