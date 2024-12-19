@@ -1,5 +1,7 @@
-# Welcome to Bazzite 󰊴
-󱋩 `%IMAGE_NAME%:%IMAGE_BRANCH%`
+# Welcome to Bazzite (DKUB Edition) 󰊴
+
+## Image
+󱋩 `bazzite-dkub:stable` based off of `%IMAGE_NAME%:%IMAGE_BRANCH%`
 
 |  Command | Description |
 | ------- | ----------- |
@@ -12,4 +14,3 @@
 - [ Report an issue](https://github.com/dkolb/bazzite-dkub/issues)
 - [󰈙 Documentation](http://docs.bazzite.gg/)
 - [󰙯 Discord](https://discord.bazzite.gg/)
-- [󰫑 Mastodon](https://fosstodon.org/@UniversalBlue)
