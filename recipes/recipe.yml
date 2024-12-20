@@ -14,9 +14,11 @@ modules:
     repos:
       - vscode.repo
       - docker-ce.repo
+      - google-chrome.repo
     keys:
       - https://packages.microsoft.com/keys/microsoft.asc
       - https://download.docker.com/linux/fedora/gpg
+      - https://dl.google.com/linux/linux_signing_key.pub 
     install:
       - code
       - hardinfo2
@@ -26,6 +28,7 @@ modules:
       - containerd.io
       - docker-buildx-plugin
       - docker-compose-plugin
+      - google-chrome-stable
   - type: default-flatpaks
     notify: true
     system:
