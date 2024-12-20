@@ -66,4 +66,4 @@ jobs:
           maximize_build_space: true
           skip_checkout: true
           build_opts: "--compression-format zstd"
-          rechunk: true
+          rechunk: ${{ github.event_name != 'pull_request' }}
