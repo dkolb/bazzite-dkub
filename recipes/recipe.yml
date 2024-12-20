@@ -15,10 +15,12 @@ modules:
       - vscode.repo
       - docker-ce.repo
       - google-chrome.repo
+      - hardware_razer.repo
     keys:
       - https://packages.microsoft.com/keys/microsoft.asc
       - https://download.docker.com/linux/fedora/gpg
       - https://dl.google.com/linux/linux_signing_key.pub 
+      - https://download.opensuse.org/repositories/hardware:/razer/Fedora_41/repodata/repomd.xml.key
     install:
       - code
       - hardinfo2
@@ -29,6 +31,12 @@ modules:
       - docker-buildx-plugin
       - docker-compose-plugin
       - google-chrome-stable
+      - kvantum
+      - lact
+      - openrazer-meta
+      - razergenie
+      - sddm-themes
+
   - type: default-flatpaks
     notify: true
     system:
