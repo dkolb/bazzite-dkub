@@ -44,7 +44,7 @@ jobs:
         run: |
           printf "###\n# containerfiles/buildargs/Containerfile\n###\n\n" > Containerfile
           echo "ARG GIT_BRANCH='${{ github.ref_name }}'" >> Containerfile
-          echo "ARG IMAGE_TAG='${{ inputs.image-tag }}'" >> Containerfile
+          echo "ARG IMAGE_TAG='${{ steps.image-tag-name.outputs.image-tag }}'" >> Containerfile
           echo "ARG GIT_REPO='${{ github.server_url }}/${{ github.repository }}'" >> Containerfile
           echo "ARG GIT_SHA='${{ github.sha }}'" >> Containerfile
           printf "###\nend file\n###\n\n"
