@@ -22,8 +22,6 @@ modules:
     install:
       - code
       - hardinfo2
-      - firefox
-      - google-chrome-stable
       - kvantum
       - lact
       - openrazer-meta
@@ -37,9 +35,6 @@ modules:
         - io.podman_desktop.PodmanDesktop
       remove:
         - org.mozilla.firefox
-  - type: bling
-    install:
-      - 1password
   - type: justfiles
     include:
       - enable-daily-ludsavi-backups.just
