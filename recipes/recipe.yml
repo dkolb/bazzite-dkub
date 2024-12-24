@@ -10,6 +10,17 @@ modules:
     files:
       - source: system
         destination: /
+  - type: justfiles
+    include:
+      - enable-daily-ludsavi-backups.just
+      - luks-fido2.just
+  - type: install-adi1090x-plymouth-theme
+    source: local
+    themes:
+      - lone
+  - type: set-plymouth-theme
+    source: local
+    theme: lone
   - type: rpm-ostree
     repos:
       - vscode.repo
@@ -35,10 +46,7 @@ modules:
         - io.podman_desktop.PodmanDesktop
       remove:
         - org.mozilla.firefox
-  - type: justfiles
-    include:
-      - enable-daily-ludsavi-backups.just
-      - luks-fido2.just
+  - type: initramfs
   - type: containerfile
     containerfiles:
       - labels
