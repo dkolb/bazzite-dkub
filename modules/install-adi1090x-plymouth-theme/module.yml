@@ -1,0 +1,7 @@
+name: install-adi1090x-plymouth-theme
+shortdesc: Install theme from https://github.com/adi1090x/plymouth-theme
+example: |
+  themes:
+    - lone
+    - red_loader
+    - cyanide

@@ -1,0 +1,4 @@
+name: set-plymouth-theme
+shortdesc: Set the Plymouth theme for the OS image. Must run initramfs module after this module.
+example: |
+  theme: details
