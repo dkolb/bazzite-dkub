@@ -38,6 +38,7 @@ modules:
       - openrazer-meta
       - razergenie
       - sddm-themes
+      - dejavu-fonts-all
   - type: default-flatpaks
     notify: true
     system:
