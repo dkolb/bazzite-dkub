@@ -14,13 +14,13 @@ modules:
     include:
       - enable-daily-ludsavi-backups.just
       - luks-fido2.just
-  - type: install-adi1090x-plymouth-theme
-    source: local
-    themes:
-      - lone
+  # - type: install-adi1090x-plymouth-theme
+  #   source: local
+  #   themes:
+  #     - lone
   - type: set-plymouth-theme
     source: local
-    theme: lone
+    theme: bgrt
   - type: rpm-ostree
     repos:
       - vscode.repo
