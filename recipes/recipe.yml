@@ -20,7 +20,7 @@ modules:
   #     - lone
   - type: set-plymouth-theme
     source: local
-    theme: bgrt
+    theme: tribar
   - type: rpm-ostree
     repos:
       - vscode.repo
@@ -38,6 +38,7 @@ modules:
       - openrazer-meta
       - razergenie
       - sddm-themes
+      - rclone
   - type: default-flatpaks
     notify: true
     system:
