@@ -1,4 +1,4 @@
-# Copilot Instructions for bazzite-dkub
+# Copilot Instructions for bazzite-for-dkub
 
 This repository is a template for building custom [bootc](https://github.com/bootc-dev/bootc) images, especially for Universal Blue Project derivatives. AI agents should follow these guidelines for effective contributions:
 
