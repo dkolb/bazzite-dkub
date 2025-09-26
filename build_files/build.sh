@@ -10,7 +10,14 @@ set -ouex pipefail
 # https://mirrors.rpmfusion.org/mirrorlist?path=free/fedora/updates/39/x86_64/repoview/index.html&protocol=https&redirect=1
 
 # this installs a package from fedora repos
-dnf5 install -y tmux 
+# dnf5 install -y tmux 
+
+# Update VS Code to latest version (already installed in base image)
+# Skip gpgcheck due to known issues with VS Code's GPG signature format
+dnf5 update --nogpgcheck --enable-repo="vscode" -y code 
+
+# Install dos programs becuase I use exFAT stuff a lot
+dnf5 install -y dosfstools exfatprogs
 
 # Use a COPR Example:
 #
@@ -21,4 +28,4 @@ dnf5 install -y tmux
 
 #### Example for enabling a System Unit File
 
-systemctl enable podman.socket
+# systemctl enable podman.socket
