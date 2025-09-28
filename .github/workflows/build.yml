@@ -15,7 +15,7 @@ on:
 
 env:
   IMAGE_DESC: "DKUB's custom Bazzite-DX container image"  # Put your own description here for a fancy profile on https://artifacthub.io/!
-  IMAGE_KEYWORDS: "bootc,ublue,universal-blue"
+  IMAGE_KEYWORDS: "bootc,ublue,universal-blue,bazzite,bazzite-dx,dkub"  # Put your own keywords here for a fancy profile on https://artifacthub.io/!
   IMAGE_LOGO_URL: "https://avatars.githubusercontent.com/u/3019596?s=200&u=b735c686ccde6a46aaea73c71a253a4ad0f86131&v=4"  # Put your own image here for a fancy profile on https://artifacthub.io/!
   IMAGE_NAME: "${{ github.event.repository.name }}"  # output image name, usually same as repo name
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"  # do not edit
