@@ -1,4 +1,4 @@
-# bazzite-for-dkub
+# bazzite-dkub
 
 A customized [bootc](https://github.com/bootc-dev/bootc) image based on [Bazzite-DX](https://github.com/ublue-os/bazzite-dx) with personal productivity enhancements.
 
@@ -9,6 +9,7 @@ This image extends Bazzite-DX with the following modifications:
 ### Software Updates
 - **VS Code**: Automatically updated to the latest version during build (bypasses GPG check for compatibility)
 - **File System Tools**: Enhanced exFAT and DOS filesystem support via `dosfstools` and `exfatprogs`
+- **ShellCheck**: Pre-installed for shell script linting in the image and CI
 
 ### Base Image
 - Built on `ghcr.io/ublue-os/bazzite-dx:stable` - includes development tools, Docker, and other productivity software out of the box
@@ -24,7 +25,7 @@ If you want to use this image directly:
 
 ```bash
 # Switch to this image (requires a bootc-compatible system)
-sudo bootc switch ghcr.io/dkolb/bazzite-for-dkub:latest
+sudo bootc switch ghcr.io/dkolb/bazzite-dkub:latest
 
 # Reboot to apply changes
 sudo systemctl reboot
@@ -41,8 +42,8 @@ sudo systemctl reboot
 
 1. **Clone the repository:**
    ```bash
-   git clone git@github.com:dkolb/bazzite-for-dkub.git
-   cd bazzite-for-dkub
+   git clone git@github.com:dkolb/bazzite-dkub.git
+   cd bazzite-dkub
    ```
 
 2. **Build locally for testing:**
@@ -236,9 +237,9 @@ These are images derived from this template (or similar enough to this template)
 
 ### Image Information
 - **Base Image**: `ghcr.io/ublue-os/bazzite-dx:stable`
-- **Registry**: `ghcr.io/dkolb/bazzite-for-dkub`
-- **Repository**: <https://github.com/dkolb/bazzite-for-dkub>
-- **SSH Remote**: `git@github.com:dkolb/bazzite-for-dkub.git`
+- **Registry**: `ghcr.io/dkolb/bazzite-dkub`
+- **Repository**: <https://github.com/dkolb/bazzite-dkub>
+- **SSH Remote**: `git@github.com:dkolb/bazzite-dkub.git`
 - **Architecture**: Multi-architecture support (amd64 primary)
 - **Update Schedule**: Automatic builds on code changes and weekly base image updates
 
@@ -251,5 +252,6 @@ These are images derived from this template (or similar enough to this template)
 ### Current Customizations Log
 - VS Code: Auto-updated to latest version (bypasses GPG check)
 - File Systems: Added `dosfstools` and `exfatprogs` for better removable media support
+- ShellCheck: Installed to support shell script linting during development
 
 *When adding new features, please update this section to maintain a clear record of customizations.*

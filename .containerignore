@@ -1,0 +1,28 @@
+# Exclude git metadata and repo config
+.git
+.gitignore
+.github/
+.vscode/
+
+# Documentation and repo guides
+README.md
+AGENTS.md
+LICENSE
+artifacthub-repo.yml
+
+# Local build outputs
+*_build*
+output/
+previous.manifest.json
+changelog.md
+
+# Disk image configs and artifacts aren't needed for container build
+disk_config/
+
+# Signing material should never enter the build context
+cosign.key
+cosign.pub
+
+# Misc root-level files not required for container builds
+Justfile
+

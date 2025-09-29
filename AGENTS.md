@@ -2,12 +2,12 @@
 
 ## Project Overview
 
-This is `bazzite-for-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc) image based on Bazzite-DX with personal productivity enhancements. The image extends the base Bazzite-DX with updated VS Code, enhanced file system support, and automated container signing.
+This is `bazzite-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc) image based on Bazzite-DX with personal productivity enhancements. The image extends the base Bazzite-DX with updated VS Code, enhanced file system support, and automated container signing.
 
 **Base Image**: `ghcr.io/ublue-os/bazzite-dx:stable`  
-**Registry**: `ghcr.io/dkolb/bazzite-for-dkub`  
-**Repository (HTTPS)**: <https://github.com/dkolb/bazzite-for-dkub>  
-**Repository (SSH)**: `git@github.com:dkolb/bazzite-for-dkub.git`
+**Registry**: `ghcr.io/dkolb/bazzite-dkub`  
+**Repository (HTTPS)**: <https://github.com/dkolb/bazzite-dkub>  
+**Repository (SSH)**: `git@github.com:dkolb/bazzite-dkub.git`
 
 ## Setup Commands
 
@@ -23,7 +23,7 @@ This is `bazzite-for-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc)
 ### Key Files
 - **`Containerfile`** - Main image definition (Podman/Docker format)
 - **`build_files/build.sh`** - Package installations and system customizations
-- **`Justfile`** - Build commands and development workflows (image name: `bazzite-for-dkub`)
+- **`Justfile`** - Build commands and development workflows (image name: `bazzite-dkub`)
 - **`.github/workflows/build.yml`** - CI/CD pipeline for automated builds
 - **`disk_config/`** - TOML files for ISO/VM image generation
 
@@ -31,6 +31,7 @@ This is `bazzite-for-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc)
 - VS Code: Auto-updated to latest version (bypasses GPG check for compatibility)
 - File Systems: Enhanced exFAT and DOS support via `dosfstools` and `exfatprogs`
 - Container Signing: Automated with Cosign via GitHub Actions
+- ShellCheck: Installed to provide shell script linting support
 
 ## Development Workflow
 
@@ -84,8 +85,8 @@ This is `bazzite-for-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc)
 - **Never commit `cosign.key`** - private signing keys stay in GitHub Secrets
 - **GPG checks disabled for VS Code** - this is intentional due to Microsoft's signature format
 - **Container signing** - all images are signed with Cosign automatically
-- **Repository uses SSH** - `git@github.com:dkolb/bazzite-for-dkub.git`
-- **Canonical Git URL** - <https://github.com/dkolb/bazzite-for-dkub>
+- **Repository uses SSH** - `git@github.com:dkolb/bazzite-dkub.git`
+- **Canonical Git URL** - <https://github.com/dkolb/bazzite-dkub>
 
 ## Build System Details
 
@@ -103,7 +104,7 @@ This is `bazzite-for-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc)
 - **Build failures**: Check that base image `ghcr.io/ublue-os/bazzite-dx:stable` is accessible
 
 ### Debug Commands
-- **Check image contents**: `podman run --rm -it bazzite-for-dkub:latest /bin/bash`
+- **Check image contents**: `podman run --rm -it bazzite-dkub:latest /bin/bash`
 - **Inspect build logs**: Check GitHub Actions logs for detailed error messages
 - **Validate Justfile**: `just check` to verify syntax
 
