@@ -32,6 +32,14 @@ This is `bazzite-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc) ima
 - File Systems: Enhanced exFAT and DOS support via `dosfstools` and `exfatprogs`
 - Container Signing: Automated with Cosign via GitHub Actions
 - ShellCheck: Installed to provide shell script linting support
+- 1Password CLI: Installed for password and secret management
+- GearLever: Flatpak AppImage manager installed per-user on first login (avoids /var pollution in base image)
+- Pre-installed AppImages in `/etc/skel/AppImages` (auto-integrated with GearLever on first login):
+  - Pinokio (AI Browser) - `pinokio.appimage`
+  - MediaElch (Media Manager for Kodi) - `mediaelch.appimage`
+  - VeraCrypt (Disk Encryption) - `veracrypt.appimage`
+  - LM Studio (Local AI) - `lm_studio.appimage`
+- Autostart Integration: Desktop entry in `/etc/skel/.config/autostart/` automatically installs GearLever per-user and integrates AppImages on first user login, enabling GitHub-based update tracking
 
 ## Development Workflow
 

@@ -10,6 +10,15 @@ This image extends Bazzite-DX with the following modifications:
 - **VS Code**: Automatically updated to the latest version during build (bypasses GPG check for compatibility)
 - **File System Tools**: Enhanced exFAT and DOS filesystem support via `dosfstools` and `exfatprogs`
 - **ShellCheck**: Pre-installed for shell script linting in the image and CI
+- **1Password CLI**: Installed for password and secret management from the command line
+- **GearLever**: Flatpak AppImage manager automatically installed on first user login for easy AppImage integration
+- **Pre-installed AppImages** (auto-integrated with GearLever on first login):
+  - **Pinokio** (v3.9.0): AI Browser for running local AI applications
+  - **MediaElch** (v2.12.0): Media Manager for Kodi
+  - **VeraCrypt** (v1.26.16): Disk encryption software
+  - **LM Studio** (v0.3.29): Local AI model runner
+  
+  *Note: AppImages are automatically integrated with GearLever on first login, enabling update tracking and management.*
 
 ### Base Image
 - Built on `ghcr.io/ublue-os/bazzite-dx:stable` - includes development tools, Docker, and other productivity software out of the box
@@ -69,6 +78,7 @@ sudo systemctl reboot
 
 - **[Containerfile](./Containerfile)** - Main image definition, follows Podman/Docker conventions
 - **[build_files/build.sh](./build_files/build.sh)** - Custom package installations and system modifications
+- **[build_files/files/](./build_files/files/)** - Static files copied to the image (mirrors filesystem structure)
 - **[Justfile](./Justfile)** - Build commands and development workflows
 - **[.github/workflows/build.yml](./.github/workflows/build.yml)** - Automated CI/CD pipeline
 - **[disk_config/](./disk_config/)** - Configuration for generating ISO/VM images
@@ -253,5 +263,9 @@ These are images derived from this template (or similar enough to this template)
 - VS Code: Auto-updated to latest version (bypasses GPG check)
 - File Systems: Added `dosfstools` and `exfatprogs` for better removable media support
 - ShellCheck: Installed to support shell script linting during development
+- 1Password CLI: Installed for password and secret management
+- GearLever: Flatpak AppImage manager installed per-user at first login (avoiding /var pollution in base image)
+- AppImages: Pre-installed Pinokio, MediaElch, VeraCrypt, and LM Studio in `/etc/skel/AppImages`
+- First-run Integration: Autostart script automatically installs GearLever and integrates AppImages on first login
 
 *When adding new features, please update this section to maintain a clear record of customizations.*
