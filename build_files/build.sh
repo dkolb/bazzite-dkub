@@ -2,6 +2,9 @@
 
 set -ouex pipefail
 
+### Copy static files from build_files/files to root
+cp -r /ctx/files/* / || true
+
 ### Install packages
 
 # Packages can be installed from any enabled yum repo on the image.
@@ -23,17 +26,32 @@ dnf5 install -y dosfstools exfatprogs
 dnf5 install -y ShellCheck
 
 # Install 1Password CLI tool
+# Repo file is installed via static files in /etc/yum.repos.d/1password.repo
 rpm --import https://downloads.1password.com/linux/keys/1password.asc
-cat > /etc/yum.repos.d/1password.repo << 'EOF'
-[1password]
-name=1Password Stable Channel
-baseurl=https://downloads.1password.com/linux/rpm/stable/$basearch
-enabled=1
-gpgcheck=1
-repo_gpgcheck=1
-gpgkey=https://downloads.1password.com/linux/keys/1password.asc
-EOF
 dnf5 install -y 1password-cli
+
+# Install AppImages to ~/AppImages directory
+mkdir -p /etc/skel/AppImages
+
+# Download Pinokio AppImage (AI Browser)
+curl -L "https://github.com/pinokiocomputer/pinokio/releases/latest/download/Pinokio-linux-x86_64.AppImage" \
+  -o /etc/skel/AppImages/pinokio.appimage
+chmod +x /etc/skel/AppImages/pinokio.appimage
+
+# Download MediaElch AppImage (Media Manager for Kodi)
+curl -L "https://github.com/Komet/MediaElch/releases/latest/download/MediaElch_linux_x86_64.AppImage" \
+  -o /etc/skel/AppImages/mediaelch.appimage
+chmod +x /etc/skel/AppImages/mediaelch.appimage
+
+# Download VeraCrypt AppImage (Disk Encryption)
+curl -L "https://github.com/veracrypt/VeraCrypt/releases/latest/download/VeraCrypt-1.26.16-x86_64.AppImage" \
+  -o /etc/skel/AppImages/veracrypt.appimage
+chmod +x /etc/skel/AppImages/veracrypt.appimage
+
+# Download LM Studio AppImage (Local AI)
+curl -L "https://installers.lmstudio.ai/linux/x64/0.3.29-1/LM-Studio-0.3.29-1-x64.AppImage" \
+  -o /etc/skel/AppImages/lm_studio.appimage
+chmod +x /etc/skel/AppImages/lm_studio.appimage
 
 # Use a COPR Example:
 #
@@ -43,7 +61,11 @@ dnf5 install -y 1password-cli
 # dnf5 -y copr disable ublue-os/staging
 
 ## Clean up
+# Remove DNF cache and metadata to keep /var clean in immutable image
+# DNF will recreate these directories at runtime if needed
 dnf5 clean all --enablerepo="*"
+rm -rf /var/lib/dnf
+rm -rf /var/cache/dnf
 
 #### Example for enabling a System Unit File
 
