@@ -47,7 +47,14 @@ systemctl enable optfix.service
 
 # Install Google Chrome
 # Repo file is installed via static files in /etc/yum.repos.d/google-chrome.repo
+# Use optfix pattern for /opt/google installation
 rpm --import https://dl.google.com/linux/linux_signing_key.pub
+
+# Create directory in /usr/lib/opt (immutable location) and symlink from /var/opt
+mkdir -p /usr/lib/opt/google
+ln -sf /usr/lib/opt/google /var/opt/google
+
+# Install Google Chrome - it will install to /opt/google/chrome which resolves correctly
 dnf5 install -y google-chrome-stable
 
 # Install AppImages to ~/AppImages directory
