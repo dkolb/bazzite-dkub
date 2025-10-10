@@ -45,6 +45,11 @@ dnf5 install -y 1password 1password-cli
 # Enable optfix service to recreate symlinks at boot if needed
 systemctl enable optfix.service
 
+# Install Google Chrome
+# Repo file is installed via static files in /etc/yum.repos.d/google-chrome.repo
+rpm --import https://dl.google.com/linux/linux_signing_key.pub
+dnf5 install -y google-chrome-stable
+
 # Install AppImages to ~/AppImages directory
 mkdir -p /etc/skel/AppImages
 
