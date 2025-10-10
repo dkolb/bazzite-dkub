@@ -32,7 +32,9 @@ This is `bazzite-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc) ima
 - File Systems: Enhanced exFAT and DOS support via `dosfstools` and `exfatprogs`
 - Container Signing: Automated with Cosign via GitHub Actions
 - ShellCheck: Installed to provide shell script linting support
-- 1Password CLI: Installed for password and secret management
+- 1Password: Full GUI application and CLI installed for password and secret management
+  - Uses optfix pattern for proper /opt directory handling in ostree/bootc
+  - Includes Flatpak browser integration script (`1password-flatpak-browser-integration`)
 - GearLever: Flatpak AppImage manager installed per-user on first login (avoids /var pollution in base image)
 - Pre-installed AppImages in `/etc/skel/AppImages` (auto-integrated with GearLever on first login):
   - Pinokio (AI Browser) - `pinokio.appimage`
