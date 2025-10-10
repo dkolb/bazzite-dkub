@@ -10,7 +10,9 @@ This image extends Bazzite-DX with the following modifications:
 - **VS Code**: Automatically updated to the latest version during build (bypasses GPG check for compatibility)
 - **File System Tools**: Enhanced exFAT and DOS filesystem support via `dosfstools` and `exfatprogs`
 - **ShellCheck**: Pre-installed for shell script linting in the image and CI
-- **1Password CLI**: Installed for password and secret management from the command line
+- **1Password**: Full GUI application and CLI installed for password and secret management
+  - Includes `1password-flatpak-browser-integration` script for easy Flatpak browser setup
+  - Run `1password-flatpak-browser-integration` to configure 1Password with your Flatpak browsers
 - **GearLever**: Flatpak AppImage manager automatically installed on first user login for easy AppImage integration
 - **Pre-installed AppImages** (auto-integrated with GearLever on first login):
   - **Pinokio** (v3.9.0): AI Browser for running local AI applications
@@ -263,7 +265,8 @@ These are images derived from this template (or similar enough to this template)
 - VS Code: Auto-updated to latest version (bypasses GPG check)
 - File Systems: Added `dosfstools` and `exfatprogs` for better removable media support
 - ShellCheck: Installed to support shell script linting during development
-- 1Password CLI: Installed for password and secret management
+- 1Password: Full GUI application and CLI installed for password and secret management
+  - Includes Flatpak browser integration script in `/usr/bin/1password-flatpak-browser-integration`
 - GearLever: Flatpak AppImage manager installed per-user at first login (avoiding /var pollution in base image)
 - AppImages: Pre-installed Pinokio, MediaElch, VeraCrypt, and LM Studio in `/etc/skel/AppImages`
 - First-run Integration: Autostart script automatically installs GearLever and integrates AppImages on first login
