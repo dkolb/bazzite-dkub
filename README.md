@@ -6,6 +6,13 @@ A customized [bootc](https://github.com/bootc-dev/bootc) image based on [Bazzite
 
 This image extends Bazzite-DX with the following modifications:
 
+### Build Optimizations
+- **Rechunking**: OCI layer rechunking for 5-10x smaller system updates (200-400 MB vs. 2 GB for minor changes)
+  - Automatically optimizes container layers during CI/CD builds
+  - Uses incremental rechunking by default for faster builds
+  - Fresh rechunking available on-demand for optimal chunk structure
+  - Based on [hhd-dev/rechunk](https://github.com/hhd-dev/rechunk) v1.2.4
+
 ### Software Updates
 - **VS Code**: Automatically updated to the latest version during build (bypasses GPG check for compatibility)
 - **File System Tools**: Enhanced exFAT and DOS filesystem support via `dosfstools` and `exfatprogs`
@@ -13,14 +20,18 @@ This image extends Bazzite-DX with the following modifications:
 - **1Password**: Full GUI application and CLI installed for password and secret management
   - Includes `1password-flatpak-browser-integration` script for easy Flatpak browser setup
   - Run `1password-flatpak-browser-integration` to configure 1Password with your Flatpak browsers
-- **GearLever**: Flatpak AppImage manager automatically installed on first user login for easy AppImage integration
-- **Pre-installed AppImages** (auto-integrated with GearLever on first login):
-  - **Pinokio** (v3.9.0): AI Browser for running local AI applications
-  - **MediaElch** (v2.12.0): Media Manager for Kodi
-  - **VeraCrypt** (v1.26.16): Disk encryption software
-  - **LM Studio** (v0.3.29): Local AI model runner
-  
-  *Note: AppImages are automatically integrated with GearLever on first login, enabling update tracking and management.*
+
+### Optional AppImages (via ujust)
+Install popular AppImages on-demand using `ujust` commands:
+- **All at once**: `ujust install-appimages` - installs all AppImages below
+- **Individual installs**:
+  - `ujust install-pinokio` - AI Browser for running local AI applications
+  - `ujust install-mediaelch` - Media Manager for Kodi
+  - `ujust install-veracrypt` - Disk encryption software
+  - `ujust install-lmstudio` - Local AI model runner
+- **AppImage Manager**: `ujust install-gearlever` - installs GearLever for managing AppImages with a GUI
+
+  *Note: AppImages are installed to `~/AppImages` and can be managed with GearLever.*
 
 ### Base Image
 - Built on `ghcr.io/ublue-os/bazzite-dx:stable` - includes development tools, Docker, and other productivity software out of the box
@@ -133,6 +144,26 @@ Every push to `main` triggers:
 2. Container signing
 3. Publication to GitHub Container Registry
 4. Optional disk image generation
+
+## Troubleshooting
+
+### Rechunking
+
+**Q: Why are my updates still large?**
+
+The first rechunked build will not have a previous reference to compare against, so updates will be larger. Subsequent builds will use incremental rechunking for optimal delta compression.
+
+**Q: How do I trigger fresh rechunking?**
+
+Go to GitHub Actions → Build workflow → Run workflow, and check the "fresh-rechunk" box. This is recommended monthly or after major base image updates.
+
+**Q: Where can I see rechunking statistics?**
+
+Check the GitHub Actions workflow logs in the "Run Rechunker" step. It shows the number of chunks created and optimization metrics.
+
+**Q: What if rechunking fails?**
+
+The workflow is configured to fail-fast if rechunking encounters errors. Check the logs for BTRFS mount errors or rechunker action failures. The build will not publish a broken image.
 
 ## Community Resources
 
@@ -262,13 +293,18 @@ These are images derived from this template (or similar enough to this template)
 - **CI/CD**: GitHub Actions with automated testing and publishing
 
 ### Current Customizations Log
+- **Rechunking**: Integrated hhd-dev/rechunk v1.2.4 for 5-10x smaller updates
+  - Automatic prev-ref generation via GHCR query (40-YYYYMMDD tag format)
+  - Workflow dispatch input for fresh rechunking mode
+  - BTRFS storage mount for efficient rechunking operations
 - VS Code: Auto-updated to latest version (bypasses GPG check)
 - File Systems: Added `dosfstools` and `exfatprogs` for better removable media support
 - ShellCheck: Installed to support shell script linting during development
 - 1Password: Full GUI application and CLI installed for password and secret management
   - Includes Flatpak browser integration script in `/usr/bin/1password-flatpak-browser-integration`
-- GearLever: Flatpak AppImage manager installed per-user at first login (avoiding /var pollution in base image)
-- AppImages: Pre-installed Pinokio, MediaElch, VeraCrypt, and LM Studio in `/etc/skel/AppImages`
-- First-run Integration: Autostart script automatically installs GearLever and integrates AppImages on first login
+- **Custom ujust recipes**: Added `/usr/share/ublue-os/just/60-custom.just` for optional AppImage installation
+  - Install all AppImages: `ujust install-appimages`
+  - Install individual AppImages: `ujust install-pinokio`, `ujust install-mediaelch`, etc.
+  - Install GearLever AppImage manager: `ujust install-gearlever`
 
 *When adding new features, please update this section to maintain a clear record of customizations.*

@@ -1,7 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Integrate AppImages with GearLever
-Exec=/bin/bash -c "$HOME/.local/bin/gearlever-integrate.sh"
-Hidden=false
-NoDisplay=false
-X-GNOME-Autostart-enabled=true
