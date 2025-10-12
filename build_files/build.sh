@@ -5,6 +5,11 @@ set -ouex pipefail
 ### Copy static files from build_files/files to root
 cp -r /ctx/files/* / || true
 
+### Pre-create system groups with fixed GIDs before package installation
+# This ensures consistent group ownership across rebases and different installations
+# The groups are defined in /usr/lib/sysusers.d/bazzite-dkub.conf
+systemd-sysusers
+
 ### Install packages
 
 # Packages can be installed from any enabled yum repo on the image.
@@ -41,6 +46,15 @@ ln -sf /usr/lib/opt/1Password /var/opt/1Password
 
 # Install 1Password packages - they will install to /opt/1Password which resolves correctly
 dnf5 install -y 1password 1password-cli
+
+# Fix 1Password-BrowserSupport permissions during build (can't fix at runtime due to immutable /usr)
+# The binary must be owned by the onepassword group with setgid for browser integration
+BROWSER_SUPPORT_PATH="/usr/lib/opt/1Password/1Password-BrowserSupport"
+if [ -f "$BROWSER_SUPPORT_PATH" ]; then
+  chgrp onepassword "$BROWSER_SUPPORT_PATH"
+  chmod g+s "$BROWSER_SUPPORT_PATH"
+  echo "Set correct permissions on 1Password-BrowserSupport during build"
+fi
 
 # Enable optfix service to recreate symlinks at boot if needed
 systemctl enable optfix.service

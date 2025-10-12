@@ -4,6 +4,11 @@ A customized [bootc](https://github.com/bootc-dev/bootc) image based on [Bazzite
 
 ## Customizations
 
+**Latest Updates:**
+- ✅ **Fixed GID Assignment** - System groups use fixed GIDs to ensure consistent ownership across rebases
+  - `onepassword` (GID 953): Required by 1Password browser integration
+- **Build-time Permission Fixing** - 1Password-BrowserSupport permissions are set correctly during image build (before /usr becomes immutable)
+
 This image extends Bazzite-DX with the following modifications:
 
 ### Build Optimizations
