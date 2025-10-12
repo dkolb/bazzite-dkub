@@ -16,6 +16,12 @@ on:
       - 'Containerfile'
       - 'build_files/**'
   workflow_dispatch:
+    inputs:
+      fresh-rechunk:
+        description: 'Enable fresh rechunking mode (omit prev-ref for clean optimization)'
+        required: false
+        default: false
+        type: boolean
 
 env:
   IMAGE_DESC: "DKUB's custom Bazzite-DX container image"  # Put your own description here for a fancy profile on https://artifacthub.io/!
@@ -26,7 +32,7 @@ env:
   DEFAULT_TAG: "latest"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.brand_name}}-${{ inputs.stream_name }}
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -50,11 +56,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
-      # This is optional, but if you see that your builds are way too big for the runners, you can enable this by uncommenting the following lines:
-      # - name: Maximize build space
-      #   uses: ublue-os/remove-unwanted-software@517622d6452028f266b7ba4cc9a123b5f58a6b53 # v7
-      #   with:
-      #     remove-codeql: true
+      # Maximize build space by removing unwanted software
+      # Reclaims ~30GB of disk space on GitHub-hosted runners
+      - name: Maximize build space
+        uses: ublue-os/remove-unwanted-software@517622d6452028f266b7ba4cc9a123b5f58a6b53 # v7
+        with:
+          remove-codeql: true
 
       - name: Mount BTRFS for podman storage
         uses: ublue-os/container-storage-action@main
@@ -80,6 +87,7 @@ jobs:
             type=raw,value=${{ env.DEFAULT_TAG }}
             type=raw,value=${{ env.DEFAULT_TAG }}.{{date 'YYYYMMDD'}}
             type=raw,value={{date 'YYYYMMDD'}}
+            type=raw,value=40-{{date 'YYYYMMDD'}}
             type=sha,enable=${{ github.event_name == 'pull_request' }}
             type=ref,event=pr
           labels: |
@@ -101,42 +109,114 @@ jobs:
           sep-tags: " "
           sep-annotations: " "
 
+      # Build image rootfully so rechunker can access it
+      # Rechunker uses 'sudo podman' which requires image in root storage
       - name: Build Image
         id: build_image
-        uses: redhat-actions/buildah-build@7a95fa7ee0f02d552a32753e7414641a04307056 # v2
+        run: |
+          # Build image as root so rechunker (which uses sudo podman) can access it
+          sudo buildah build \
+            --format docker \
+            --tag "localhost/raw-img:${{ env.DEFAULT_TAG }}" \
+            --file Containerfile \
+            .
+          
+          echo "✅ Successfully built image localhost/raw-img:${{ env.DEFAULT_TAG }}"
+        env:
+          DEFAULT_TAG: ${{ env.DEFAULT_TAG }}
+
+      # Rechunking implementation for 5-10x smaller update downloads
+      # Documentation: https://github.com/hhd-dev/rechunk
+      
+      # Step 1: Mount BTRFS storage required for rechunking
+      - name: Mount BTRFS Storage for Rechunking
+        run: |
+          echo "Creating 50GB BTRFS filesystem for rechunking..."
+          sudo mkdir -p /var/tmp/rechunk-btrfs
+          sudo truncate -s 50G /var/tmp/rechunk.img
+          sudo mkfs.btrfs /var/tmp/rechunk.img
+          sudo mount -o loop /var/tmp/rechunk.img /var/tmp/rechunk-btrfs
+          sudo chmod 777 /var/tmp/rechunk-btrfs
+          echo "BTRFS mounted at /var/tmp/rechunk-btrfs"
+          df -h /var/tmp/rechunk-btrfs
+
+      # Step 2: Generate version tag for this build (40-YYYYMMDD format)
+      - name: Generate Version Tag
+        id: generate-version
+        run: |
+          TAG="40-$(date +%Y%m%d)"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Generated version tag: $TAG"
+
+      # Step 3: Query GHCR for previous rechunked image to use as baseline
+      - name: Generate Previous Reference
+        id: generate-prev-ref
+        run: |
+          # Skip prev-ref if fresh-rechunk mode enabled
+          if [[ "${{ github.event.inputs.fresh-rechunk }}" == "true" ]]; then
+            echo "Fresh rechunking mode enabled - skipping prev-ref"
+            echo "ref=" >> $GITHUB_OUTPUT
+            echo "tag=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Query GHCR for latest tag matching Fedora 40 date pattern (40-YYYYMMDD)
+          echo "Querying GHCR for latest rechunked image..."
+          LATEST_TAG=$(skopeo list-tags docker://ghcr.io/dkolb/bazzite-dkub 2>/dev/null | \
+            jq -r '.Tags | map(select(test("^40-[0-9]{8}$"))) | sort | last // ""')
+          
+          # Validate tag exists and is not current build's tag (prevent circular reference)
+          CURRENT_TAG="${{ steps.generate-version.outputs.tag }}"
+          if [[ -n "$LATEST_TAG" ]] && [[ "$LATEST_TAG" != "$CURRENT_TAG" ]]; then
+            echo "Using prev-ref: ghcr.io/dkolb/bazzite-dkub:$LATEST_TAG"
+            echo "ref=ghcr.io/dkolb/bazzite-dkub:$LATEST_TAG" >> $GITHUB_OUTPUT
+            echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          else
+            echo "No valid prev-ref found - using fresh rechunking"
+            if [[ "$LATEST_TAG" == "$CURRENT_TAG" ]]; then
+              echo "Reason: Latest tag matches current build tag (same-day rebuild)"
+            else
+              echo "Reason: No previous rechunked images found (first build)"
+            fi
+            echo "ref=" >> $GITHUB_OUTPUT
+            echo "tag=" >> $GITHUB_OUTPUT
+          fi
+
+      # Step 4: Run rechunker to optimize OCI layers
+      - name: Run Rechunker
+        id: rechunk
+        uses: hhd-dev/rechunk@5fbe1d3a639615d2548d83bc888360de6267b1a2 # v1.2.4
         with:
-          containerfiles: |
-            ./Containerfile
-          # Postfix image name with -custom to make it a little more descriptive
-          # Syntax: https://docs.github.com/en/actions/learn-github-actions/expressions#format
-          image: ${{ env.IMAGE_NAME }}
-          tags: ${{ steps.metadata.outputs.tags }}
+          rechunk: ghcr.io/hhd-dev/rechunk:v1.2.4
+          ref: localhost/raw-img
+          prev-ref: ${{ steps.generate-prev-ref.outputs.ref }}
+          version: ${{ steps.generate-version.outputs.tag }}
           labels: ${{ steps.metadata.outputs.labels }}
-          oci: false
+        timeout-minutes: 10
 
-      # Rechunk is a script that we use on Universal Blue to make sure there isnt a single huge layer when your image gets published.
-      # This does not make your image faster to download, just provides better resumability and fixes a few errors.
-      # Documentation for Rechunk is provided on their github repository at https://github.com/hhd-dev/rechunk
-      # You can enable it by uncommenting the following lines:
-      # - name: Run Rechunker
-      #   id: rechunk
-      #   uses: hhd-dev/rechunk@f153348d8100c1f504dec435460a0d7baf11a9d2 # v1.1.1
-      #   with:
-      #     rechunk: 'ghcr.io/hhd-dev/rechunk:v1.0.1'
-      #     ref: "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
-      #     prev-ref: "${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
-      #     skip_compression: true
-      #     version: ${{ env.CENTOS_VERSION }}
-      #     labels: ${{ steps.metadata.outputs.labels }} # Rechunk strips out all the labels during build, this needs to be reapplied here with newline separator
-
-      # This is necessary so that the podman socket can find the rechunked image on its storage
-      # - name: Load in podman and tag
-      #   run: |
-      #     IMAGE=$(podman pull ${{ steps.rechunk.outputs.ref }})
-      #     sudo rm -rf ${{ steps.rechunk.outputs.output }}
-      #     for tag in ${{ steps.metadata.outputs.tags }}; do
-      #       podman tag $IMAGE ${{ env.IMAGE_NAME }}:$tag
-      #     done
+      # Step 5: Load rechunked image and tag with final version
+      - name: Load rechunked image in podman and tag
+        run: |
+          echo "Loading rechunked image from OCI directory..."
+          # Use the version tag output from rechunker (may have .1, .2 suffix for duplicates)
+          RECHUNKED_VERSION="${{ steps.rechunk.outputs.version }}"
+          echo "Rechunked version: $RECHUNKED_VERSION"
+          
+          # Load rechunked image and capture the loaded image ID
+          IMAGE_OUTPUT=$(podman pull ${{ steps.rechunk.outputs.ref }})
+          IMAGE_ID=$(echo "$IMAGE_OUTPUT" | tail -n 1)
+          echo "Loaded image ID: $IMAGE_ID"
+          
+          # Tag with all versions from metadata step
+          for tag in ${{ steps.metadata.outputs.tags }}; do
+            echo "Tagging as: ${{ env.IMAGE_NAME }}:$tag"
+            podman tag $IMAGE_ID ${{ env.IMAGE_NAME }}:$tag
+          done
+          
+          # Clean up rechunk output directory
+          sudo rm -rf ${{ steps.rechunk.outputs.output }}
+          
+          echo "✅ Rechunked image tagged and ready for push"
 
       # These `if` statements are so that pull requests for your custom images do not make it publish any packages under your name without you knowing
       # They also check if the runner is on the default branch so that things like the merge queue (if you enable it), are going to work

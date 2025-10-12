@@ -57,29 +57,6 @@ ln -sf /usr/lib/opt/google /var/opt/google
 # Install Google Chrome - it will install to /opt/google/chrome which resolves correctly
 dnf5 install -y google-chrome-stable
 
-# Install AppImages to ~/AppImages directory
-mkdir -p /etc/skel/AppImages
-
-# Download Pinokio AppImage (AI Browser)
-curl -L "https://github.com/pinokiocomputer/pinokio/releases/latest/download/Pinokio-linux-x86_64.AppImage" \
-  -o /etc/skel/AppImages/pinokio.appimage
-chmod +x /etc/skel/AppImages/pinokio.appimage
-
-# Download MediaElch AppImage (Media Manager for Kodi)
-curl -L "https://github.com/Komet/MediaElch/releases/latest/download/MediaElch_linux_x86_64.AppImage" \
-  -o /etc/skel/AppImages/mediaelch.appimage
-chmod +x /etc/skel/AppImages/mediaelch.appimage
-
-# Download VeraCrypt AppImage (Disk Encryption)
-curl -L "https://github.com/veracrypt/VeraCrypt/releases/latest/download/VeraCrypt-1.26.16-x86_64.AppImage" \
-  -o /etc/skel/AppImages/veracrypt.appimage
-chmod +x /etc/skel/AppImages/veracrypt.appimage
-
-# Download LM Studio AppImage (Local AI)
-curl -L "https://installers.lmstudio.ai/linux/x64/0.3.29-1/LM-Studio-0.3.29-1-x64.AppImage" \
-  -o /etc/skel/AppImages/lm_studio.appimage
-chmod +x /etc/skel/AppImages/lm_studio.appimage
-
 # Use a COPR Example:
 #
 # dnf5 -y copr enable ublue-os/staging

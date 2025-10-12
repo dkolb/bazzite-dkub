@@ -6,8 +6,8 @@ This directory contains static files that should be copied to the image during b
 
 Files in this directory mirror the final filesystem structure. For example:
 
-- `files/etc/skel/.local/bin/script.sh` → `/etc/skel/.local/bin/script.sh` in the image
-- `files/etc/skel/.config/autostart/app.desktop` → `/etc/skel/.config/autostart/app.desktop` in the image
+- `files/usr/share/ublue-os/just/60-custom.just` → `/usr/share/ublue-os/just/60-custom.just` in the image
+- `files/etc/yum.repos.d/1password.repo` → `/etc/yum.repos.d/1password.repo` in the image
 
 ## How It Works
 
@@ -19,13 +19,22 @@ cp -r /ctx/files/* / || true
 
 ## Current Files
 
-### GearLever Integration
-- **`etc/skel/.local/bin/gearlever-integrate.sh`** - Script that integrates pre-installed AppImages with GearLever on first user login
-- **`etc/skel/.config/autostart/gearlever-integrate-appimages.desktop`** - XDG autostart entry to run the integration script
+### Custom ujust Recipes
+- **`usr/share/ublue-os/just/60-custom.just`** - Custom just recipes for optional AppImage installation
+  - `ujust install-appimages` - Install all common AppImages
+  - `ujust install-pinokio`, `ujust install-mediaelch`, etc. - Install individual AppImages
+  - `ujust install-gearlever` - Install GearLever AppImage manager
 
 ### System Configuration
 - **`usr/lib/sysusers.d/onepassword-cli.conf`** - systemd sysusers.d declaration for the onepassword-cli group (ensures proper immutable OS integration)
-- **`etc/yum.repos.d/1password.repo`** - 1Password CLI repository configuration
+- **`usr/lib/sysusers.d/bazzite-dkub.conf`** - systemd sysusers.d declaration for bazzite-dkub-specific groups
+- **`etc/yum.repos.d/1password.repo`** - 1Password repository configuration
+- **`etc/yum.repos.d/google-chrome.repo`** - Google Chrome repository configuration
+
+### 1Password Optfix
+- **`usr/lib/systemd/system/optfix.service`** - Systemd service for optfix
+- **`usr/libexec/optfix.sh`** - Script to fix /opt symlinks on boot
+- **`usr/lib/tmpfiles.d/optfix.conf`** - Tmpfiles.d configuration for optfix
 
 ## Adding New Static Files
 

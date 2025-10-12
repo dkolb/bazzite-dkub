@@ -28,6 +28,11 @@ This is `bazzite-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc) ima
 - **`disk_config/`** - TOML files for ISO/VM image generation
 
 ### Current Customizations
+- **Rechunking**: Integrated hhd-dev/rechunk v1.2.4 for 5-10x smaller system updates
+  - Automatic prev-ref generation via GHCR query (40-YYYYMMDD tag format)
+  - Workflow dispatch input for fresh rechunking mode (recommended monthly)
+  - BTRFS storage mount at `/var/tmp/rechunk-btrfs` (50GB) for rechunking operations
+  - Incremental rechunking by default, fresh mode available on-demand
 - VS Code: Auto-updated to latest version (bypasses GPG check for compatibility)
 - File Systems: Enhanced exFAT and DOS support via `dosfstools` and `exfatprogs`
 - Container Signing: Automated with Cosign via GitHub Actions
@@ -35,13 +40,11 @@ This is `bazzite-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc) ima
 - 1Password: Full GUI application and CLI installed for password and secret management
   - Uses optfix pattern for proper /opt directory handling in ostree/bootc
   - Includes Flatpak browser integration script (`1password-flatpak-browser-integration`)
-- GearLever: Flatpak AppImage manager installed per-user on first login (avoids /var pollution in base image)
-- Pre-installed AppImages in `/etc/skel/AppImages` (auto-integrated with GearLever on first login):
-  - Pinokio (AI Browser) - `pinokio.appimage`
-  - MediaElch (Media Manager for Kodi) - `mediaelch.appimage`
-  - VeraCrypt (Disk Encryption) - `veracrypt.appimage`
-  - LM Studio (Local AI) - `lm_studio.appimage`
-- Autostart Integration: Desktop entry in `/etc/skel/.config/autostart/` automatically installs GearLever per-user and integrates AppImages on first user login, enabling GitHub-based update tracking
+- Custom ujust recipes: `/usr/share/ublue-os/just/60-custom.just` provides optional AppImage installation
+  - `ujust install-appimages` - Install all common AppImages (Pinokio, MediaElch, VeraCrypt, LM Studio)
+  - `ujust install-<name>` - Install individual AppImages on-demand
+  - `ujust install-gearlever` - Install GearLever AppImage manager
+  - AppImages are installed to `~/AppImages` directory per-user
 
 ## Development Workflow
 
@@ -112,17 +115,24 @@ This is `bazzite-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc) ima
 - **Permission denied in GHCR**: Ensure repository workflow permissions are set to "Read and write permissions"
 - **VS Code GPG errors**: Use `--nogpgcheck` flag (this is expected and documented)
 - **Build failures**: Check that base image `ghcr.io/ublue-os/bazzite-dx:stable` is accessible
+- **Rechunking errors**: Check GitHub Actions logs for BTRFS mount failures or prev-ref query issues
+- **Large update sizes**: First rechunked build has no prev-ref; subsequent builds will be optimized
+- **Fresh rechunking**: Trigger via workflow dispatch with `fresh-rechunk: true` input (recommended monthly)
 
 ### Debug Commands
 - **Check image contents**: `podman run --rm -it bazzite-dkub:latest /bin/bash`
 - **Inspect build logs**: Check GitHub Actions logs for detailed error messages
 - **Validate Justfile**: `just check` to verify syntax
+- **Verify rechunking metadata**: `skopeo inspect docker://ghcr.io/dkolb/bazzite-dkub:latest | jq '.Labels | select(.["rechunk.version"])'`
+- **Check prev-ref generation**: Review GitHub Actions logs in "Generate Previous Reference" step
 
 ## References
 
 - [Bazzite-DX Base Image](https://github.com/ublue-os/bazzite-dx)
 - [Universal Blue Community](https://universal-blue.discourse.group/)
 - [bootc Documentation](https://github.com/bootc-dev/bootc/discussions)
+- [hhd-dev/rechunk](https://github.com/hhd-dev/rechunk) - OCI layer rechunking tool
+- [just Command Runner](https://just.systems/)
 - [just Command Runner](https://just.systems/)
 
 ---
