@@ -22,9 +22,6 @@ This image extends Bazzite-DX with the following modifications:
 - **VS Code**: Automatically updated to the latest version during build (bypasses GPG check for compatibility)
 - **File System Tools**: Enhanced exFAT and DOS filesystem support via `dosfstools` and `exfatprogs`
 - **ShellCheck**: Pre-installed for shell script linting in the image and CI
-- **1Password**: Full GUI application and CLI installed for password and secret management
-  - Includes `1password-flatpak-browser-integration` script for easy Flatpak browser setup
-  - Run `1password-flatpak-browser-integration` to configure 1Password with your Flatpak browsers
 
 ### Optional AppImages (via ujust)
 Install popular AppImages on-demand using `ujust` commands:
@@ -305,8 +302,6 @@ These are images derived from this template (or similar enough to this template)
 - VS Code: Auto-updated to latest version (bypasses GPG check)
 - File Systems: Added `dosfstools` and `exfatprogs` for better removable media support
 - ShellCheck: Installed to support shell script linting during development
-- 1Password: Full GUI application and CLI installed for password and secret management
-  - Includes Flatpak browser integration script in `/usr/bin/1password-flatpak-browser-integration`
 - **Custom ujust recipes**: Added `/usr/share/ublue-os/just/60-custom.just` for optional AppImage installation
   - Install all AppImages: `ujust install-appimages`
   - Install individual AppImages: `ujust install-pinokio`, `ujust install-mediaelch`, etc.
