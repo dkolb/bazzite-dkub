@@ -246,6 +246,84 @@ jobs:
           username: ${{ env.REGISTRY_USER }}
           password: ${{ env.REGISTRY_PASSWORD }}
 
+      # Pre-push: fetch previous manifest digest for the canonical tag (e.g., latest)
+      - name: Fetch previous registry digest
+        id: prev-digest
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        run: |
+          set -euo pipefail
+          TAG=${{ env.DEFAULT_TAG }}
+          OWNER=${{ github.repository_owner }}
+          REPO=${{ env.IMAGE_NAME }}
+          URL="https://ghcr.io/v2/${OWNER}/${REPO}/manifests/${TAG}"
+          echo "Querying manifest HEAD for $OWNER/$REPO:$TAG"
+          # Use a HEAD request to get the Docker-Content-Digest header if present
+          HEADERS=$(curl -sI -H "Accept: application/vnd.docker.distribution.manifest.v2+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "$URL" || true)
+          PREV_DIGEST=$(echo "$HEADERS" | awk '/Docker-Content-Digest/ {print $2}' | tr -d '\r') || true
+          if [[ -n "$PREV_DIGEST" ]]; then
+            echo "prev_digest=$PREV_DIGEST" >> $GITHUB_OUTPUT
+          else
+            echo "prev_digest=" >> $GITHUB_OUTPUT
+          fi
+
+      # Compare previous digest to the newly pushed digest
+      - name: Check for new digest
+        id: check-new
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        run: |
+          set -euo pipefail
+          NEW_DIGEST="${{ steps.push.outputs.digest }}"
+          PREV_DIGEST="${{ steps.prev-digest.outputs.prev_digest }}"
+          echo "new_digest=$NEW_DIGEST" >> $GITHUB_OUTPUT
+          echo "prev_digest=$PREV_DIGEST" >> $GITHUB_OUTPUT
+          echo "prev_digest=$PREV_DIGEST"
+          echo "new_digest=$NEW_DIGEST"
+          if [[ -z "$NEW_DIGEST" ]]; then
+            # If push step did not expose a digest, consider as not-new to avoid noise
+            echo "is_new=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          if [[ "$NEW_DIGEST" != "$PREV_DIGEST" ]]; then
+            echo "is_new=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_new=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Conditional: send a Pushover notification when a new digest is detected
+      - name: Send Pushover notification (conditional)
+        id: pushover-notify
+        if: ${{ steps.check-new.outputs.is_new == 'true' && env.PUSHOVER_ENABLED != 'false' }}
+        run: |
+          set -euo pipefail
+          ATTEMPTS=0
+          MAX_ATTEMPTS=2
+          NEW_DIGEST="${{ steps.check-new.outputs.new_digest }}"
+          IMAGE_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          TITLE="New image published: ${{ env.DEFAULT_TAG }}"
+          MESSAGE="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}@$NEW_DIGEST"
+          while [ "$ATTEMPTS" -lt "$MAX_ATTEMPTS" ]; do
+            ATTEMPTS=$((ATTEMPTS+1))
+            echo "Pushover attempt $ATTEMPTS"
+            RESPONSE=$(curl -s -X POST https://api.pushover.net/1/messages.json \
+              -F token="${{ secrets.PUSHOVER_TOKEN }}" \
+              -F user="${{ secrets.PUSHOVER_USER }}" \
+              -F title="$TITLE" \
+              -F message="$MESSAGE" \
+              -F url="$IMAGE_URL" || true)
+            if echo "$RESPONSE" | grep -q '"status":1'; then
+              echo "sent=true" >> $GITHUB_OUTPUT
+              echo "response=$RESPONSE" >> $GITHUB_OUTPUT
+              echo "Pushover sent"
+              exit 0
+            else
+              echo "Pushover attempt $ATTEMPTS failed: $RESPONSE"
+              sleep 3
+            fi
+          done
+          echo "sent=false" >> $GITHUB_OUTPUT
+          echo "Pushover failed after $MAX_ATTEMPTS attempts"
+          exit 0
+
       # This section is optional and only needs to be enabled if you plan on distributing
       # your project for others to consume. You will need to create a public and private key
       # using Cosign and save the private key as a repository secret in Github for this workflow
