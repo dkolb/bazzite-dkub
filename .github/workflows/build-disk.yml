@@ -23,6 +23,8 @@ on:
       - './disk_config/disk.toml'
       - './disk_config/iso-kde.toml'
       - './.github/workflows/build-disk.yml'
+      - '!docs/**'
+      - '!specs/**'
 
 env:
   IMAGE_NAME: ${{ github.event.repository.name }} # output of build.yml, keep in sync

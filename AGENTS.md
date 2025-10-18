@@ -50,6 +50,8 @@ This is `bazzite-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc) ima
   - LM Studio (Local AI) - `lm_studio.appimage`
 - Autostart Integration: Desktop entry in `/etc/skel/.config/autostart/` automatically installs GearLever per-user and integrates AppImages on first user login, enabling GitHub-based update tracking
 
+- Spec-Driven Development: We use GitHub's SpecKit (https://github.com/github/spec-kit) as part of our development workflow to write executable specifications, generate plans and tasks, and drive implementation with supported AI agents. See `docs/speckit.md` for a brief internal reference and recommended commands.
+
 ## Development Workflow
 
 ### Adding New Packages
