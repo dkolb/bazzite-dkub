@@ -50,30 +50,36 @@ T006 - [US1] Add pre-push digest fetch step to `build.yml` (sequential)
 - Implementation hint: use curl with Accept: manifest.v2 and `Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}`. Save output as step id `prev-digest` with `prev_digest` output.
 - Files: `.github/workflows/build.yml`
 - Acceptance: `steps.prev-digest.outputs.prev_digest` is set after the step (value may be empty if no previous tag exists).
+- Status: ✅ Implemented
 
 T007 - [US1] Compare pushed digest to previous digest (sequential)
 - Action: Insert a new step AFTER the `Push To GHCR` (`id: push`) step. This step reads `NEW_DIGEST=${{ steps.push.outputs.digest }}` and `PREV_DIGEST=${{ steps.prev-digest.outputs.prev_digest }}` and sets `is_new` output to `true` or `false`.
 - Implementation hint: write outputs to `$GITHUB_OUTPUT` and exit 0 for both paths (do not fail the job on `is_new=false`).
 - Files: `.github/workflows/build.yml`
 - Acceptance: `steps.check-new.outputs.is_new` equals `true` when digests differ or previous digest empty; equals `false` when equal.
+- Status: ✅ Implemented
 
 T008 - [US1] Add conditional Pushover notification step (sequential)
 - Action: Insert a conditional step that runs only if `steps.check-new.outputs.is_new == 'true'`. Use `umahmood/pushover-actions@main` with env `PUSHOVER_TOKEN` and `PUSHOVER_USER` (repo secrets) and with minimal payload: title, message, url.
 - Files: `.github/workflows/build.yml`
 - Acceptance: Notification action runs only when `is_new=true` and returns success; verify delivery on test devices.
+- Status: ✅ Implemented
 
 T009 - [US1] Add lightweight retry for notification (parallel)
 - Action: Wrap the notification call in a small retry loop (2 attempts) or use the action within a try/catch style step to retry on transient failures.
 - Files: `.github/workflows/build.yml`
 - Acceptance: On a transient HTTP failure (simulate by temporarily breaking token), the step retries once and logs retry attempt.
+- Status: ✅ Implemented (MVP: 2 attempts)
 
 T010 - [US1] Add logging and human-readable failure messages (parallel)
 - Action: Ensure the compare step logs both digests and, on notification failure, prints a concise reason (do not leak secrets). Update quickstart troubleshooting notes.
 - Acceptance: Logs contain `prev_digest=...` and `new_digest=...` and a readable failure note if notification fails.
+- Status: ✅ Implemented
 
 T011 - [US1] Add throttle safeguard (parallel)
 - Action: Add a simple throttling policy (MVP: rely on Pushover limits and do not send duplicate notifications within X minutes) — for now, document throttle policy in `quickstart.md` and, optionally, add a short check that prevents notification if a recent notification is recorded in Actions artifacts (optional enhancement).
-- Acceptance: Throttle policy documented; optional implementation added.
+- Acceptance: Throttle policy documented in `quickstart.md` (optional runtime implementation deferred)
+- Status: ✅ Documented
 
 User Story US2 (P2) — Configure notification recipients and opt-in
 -------------------------------------------------------------
