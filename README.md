@@ -2,6 +2,10 @@
 
 A customized [bootc](https://github.com/bootc-dev/bootc) image based on [Bazzite-DX](https://github.com/ublue-os/bazzite-dx) with personal productivity enhancements.
 
+<!-- User Provided Input Never Edit -->
+Yes, I experiment with Github Copilot in this repository. I'm trying not to die of capitalism and my job is neck deep in Github Copilot. Feel how you want about that, but it's a useful, lowstakes project to experiment on.
+<!-- End User Provided Input -->
+
 ## Customizations
 
 **Latest Updates:**
