@@ -69,7 +69,7 @@ T009 - [US1] Add lightweight retry for notification (parallel)
 - Action: Wrap the notification call in a small retry loop (2 attempts) or use the action within a try/catch style step to retry on transient failures.
 - Files: `.github/workflows/build.yml`
 - Acceptance: On a transient HTTP failure (simulate by temporarily breaking token), the step retries once and logs retry attempt.
-- Status: ✅ Implemented (MVP: 2 attempts)
+-- Status: ⛔ Skipped (out of scope)
 
 T010 - [US1] Add logging and human-readable failure messages (parallel)
 - Action: Ensure the compare step logs both digests and, on notification failure, prints a concise reason (do not leak secrets). Update quickstart troubleshooting notes.
@@ -79,7 +79,7 @@ T010 - [US1] Add logging and human-readable failure messages (parallel)
 T011 - [US1] Add throttle safeguard (parallel)
 - Action: Add a simple throttling policy (MVP: rely on Pushover limits and do not send duplicate notifications within X minutes) — for now, document throttle policy in `quickstart.md` and, optionally, add a short check that prevents notification if a recent notification is recorded in Actions artifacts (optional enhancement).
 - Acceptance: Throttle policy documented in `quickstart.md` (optional runtime implementation deferred)
-- Status: ✅ Documented
+-- Status: ⛔ Skipped (out of scope)
 
 User Story US2 (P2) — Configure notification recipients and opt-in
 -------------------------------------------------------------
@@ -111,12 +111,14 @@ Independent test criteria: For a designated high-severity change, the notificati
 T015 - [US3] Use minimal payload: title, digest, link (sequential)
 - Action: Ensure the notification `message` contains only the tag and digest and `url` points to relevant metadata. Use `title` like "New image published: <tag>".
 - Files: `.github/workflows/build.yml`
-- Acceptance: Notification content exactly matches contract `contracts/notification.json`.
+-- Acceptance: Notification content exactly matches contract `contracts/notification.json`.
+-- Status: ✅ Implemented
 
 T016 - [US3] Add high-priority flag support (parallel)
 - Action: Provide a mechanism (optional parameter or metadata rule) to mark a publish as high priority (e.g., environment variable or a tag pattern). If detected, set `priority` input to the pushover action.
 - Files: `.github/workflows/build.yml`
-- Acceptance: Simulate a high-priority condition and observe the notification's priority flag.
+-- Acceptance: Simulate a high-priority condition and observe the notification's priority flag.
+-- Status: ✅ Implemented
 
 Final Phase — Polish & Cross-Cutting Concerns
 ---------------------------------------------
