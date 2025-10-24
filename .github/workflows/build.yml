@@ -224,6 +224,26 @@ jobs:
 
       # These `if` statements are so that pull requests for your custom images do not make it publish any packages under your name without you knowing
       # They also check if the runner is on the default branch so that things like the merge queue (if you enable it), are going to work
+      # Pre-push: fetch previous manifest digest for the canonical tag (e.g., latest)
+      - name: Fetch previous registry digest
+        id: prev-digest
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        run: |
+          set -euo pipefail
+          TAG=${{ env.DEFAULT_TAG }}
+          OWNER=${{ github.repository_owner }}
+          REPO=${{ env.IMAGE_NAME }}
+          URL="https://ghcr.io/v2/${OWNER}/${REPO}/manifests/${TAG}"
+          echo "Querying manifest HEAD for $OWNER/$REPO:$TAG"
+          # Use a HEAD request to get the Docker-Content-Digest header if present
+          HEADERS=$(curl -sI -H "Accept: application/vnd.docker.distribution.manifest.v2+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "$URL" || true)
+          PREV_DIGEST=$(echo "$HEADERS" | awk '/Docker-Content-Digest/ {print $2}' | tr -d '\r') || true
+          if [[ -n "$PREV_DIGEST" ]]; then
+            echo "prev_digest=$PREV_DIGEST" >> $GITHUB_OUTPUT
+          else
+            echo "prev_digest=" >> $GITHUB_OUTPUT
+          fi
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
@@ -245,6 +265,99 @@ jobs:
           tags: ${{ steps.metadata.outputs.tags }}
           username: ${{ env.REGISTRY_USER }}
           password: ${{ env.REGISTRY_PASSWORD }}
+      
+
+      # Compare previous digest to the newly pushed digest
+      - name: Check for new digest
+        id: check-new
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        run: |
+          set -euo pipefail
+          NEW_DIGEST="${{ steps.push.outputs.digest }}"
+          PREV_DIGEST="${{ steps.prev-digest.outputs.prev_digest }}"
+          # Log digests for human inspection (do not print secrets)
+          echo "new_digest=$NEW_DIGEST" >> $GITHUB_OUTPUT
+          echo "prev_digest=$PREV_DIGEST" >> $GITHUB_OUTPUT
+          if [[ -z "$PREV_DIGEST" ]]; then
+            echo "Previous digest: <none> (first publish or tag missing)"
+          else
+            echo "Previous digest: $PREV_DIGEST"
+          fi
+          if [[ -z "$NEW_DIGEST" ]]; then
+            echo "New digest: <none> (push step did not expose a digest)"
+          else
+            echo "New digest: $NEW_DIGEST"
+          fi
+          if [[ -z "$NEW_DIGEST" ]]; then
+            # If push step did not expose a digest, consider as not-new to avoid noise
+            echo "is_new=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          if [[ "$NEW_DIGEST" != "$PREV_DIGEST" ]]; then
+            echo "is_new=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_new=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Conditional: send a Pushover notification when a new digest is detected
+      - name: Send Pushover notification (conditional)
+        id: pushover-notify
+        if: ${{ steps.check-new.outputs.is_new == 'true' }}
+        run: |
+          set -euo pipefail
+          # Skip if PUSHOVER_TOKEN not configured
+          if [ -z "${{ secrets.PUSHOVER_TOKEN }}" ] || [ -z "${{ secrets.PUSHOVER_USER }}" ]; then
+            echo "Pushover secrets missing - skipping notification"
+            echo "sent=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          ATTEMPTS=0
+          MAX_ATTEMPTS=2
+          NEW_DIGEST="${{ steps.check-new.outputs.new_digest }}"
+          IMAGE_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          TITLE="New image published: ${{ env.DEFAULT_TAG }}"
+          # Message should be concise per contract: include tag and digest
+          MESSAGE="Tag: ${{ env.DEFAULT_TAG }}\nDigest: $NEW_DIGEST"
+
+          # High-priority detection (US3 T016): set priority if requested via env or tag
+          PRIORITY=0
+          # Check explicit env toggle
+          if [ "${{ env.PUSHOVER_HIGH_PRIORITY }}" = "true" ]; then
+            PRIORITY=1
+          fi
+          # Check tags for high/urgent keywords
+          if echo "${{ steps.metadata.outputs.tags }}" | grep -E -q '(high|urgent)'; then
+            PRIORITY=1
+          fi
+          while [ "$ATTEMPTS" -lt "$MAX_ATTEMPTS" ]; do
+            ATTEMPTS=$((ATTEMPTS+1))
+            echo "Pushover attempt $ATTEMPTS"
+            RESPONSE=$(curl -s -X POST https://api.pushover.net/1/messages.json \
+              -F token="${{ secrets.PUSHOVER_TOKEN }}" \
+              -F user="${{ secrets.PUSHOVER_USER }}" \
+              -F title="$TITLE" \
+              -F message="$MESSAGE" \
+              -F url="$IMAGE_URL" \
+              -F priority="$PRIORITY" || true)
+            if echo "$RESPONSE" | grep -q '"status":1'; then
+              echo "sent=true" >> $GITHUB_OUTPUT
+              echo "response=$RESPONSE" >> $GITHUB_OUTPUT
+              echo "Pushover sent (priority=$PRIORITY)"
+              exit 0
+            else
+              # Human-readable failure (no secrets)
+              ERR_MSG=$(echo "$RESPONSE" | jq -r '.errors[]? // .error // empty' 2>/dev/null || true)
+              if [ -n "$ERR_MSG" ]; then
+                echo "Pushover attempt $ATTEMPTS failed: $ERR_MSG"
+              else
+                echo "Pushover attempt $ATTEMPTS failed: $RESPONSE"
+              fi
+              sleep 3
+            fi
+          done
+          echo "sent=false" >> $GITHUB_OUTPUT
+          echo "Pushover failed after $MAX_ATTEMPTS attempts"
+          exit 0
 
       # This section is optional and only needs to be enabled if you plan on distributing
       # your project for others to consume. You will need to create a public and private key

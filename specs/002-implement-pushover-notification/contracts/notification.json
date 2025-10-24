@@ -1,0 +1,21 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Pushover Notification Payload",
+    "version": "1.0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "PushoverPayload": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "message": { "type": "string" },
+          "url": { "type": "string", "format": "uri" }
+        },
+        "required": ["title", "message", "url"]
+      }
+    }
+  }
+}

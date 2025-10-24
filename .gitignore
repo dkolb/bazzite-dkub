@@ -2,3 +2,23 @@ cosign.key
 _build_*
 output
 _build-*/**
+
+# Universal ignores
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
+
+# Docker / CI
+node_modules/
+.env
+.env.*
+coverage/
+*.log
+
+# Terraform
+.terraform/
+*.tfstate*
+*.tfvars
