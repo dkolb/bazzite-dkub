@@ -9,9 +9,8 @@ Yes, I experiment with Github Copilot in this repository. I'm trying not to die 
 ## Customizations
 
 **Latest Updates:**
-- ✅ **Fixed GID Assignment** - System groups use fixed GIDs to ensure consistent ownership across rebases
-  - `onepassword` (GID 953): Required by 1Password browser integration
-- **Build-time Permission Fixing** - 1Password-BrowserSupport permissions are set correctly during image build (before /usr becomes immutable)
+- **GearLever Integration** - AppImage manager with automatic first-login installation and GitHub-based update tracking
+- **Pre-installed AppImages** - Popular applications (Pinokio, MediaElch, VeraCrypt, LM Studio) ready to use
 
 This image extends Bazzite-DX with the following modifications:
 
@@ -310,5 +309,8 @@ These are images derived from this template (or similar enough to this template)
   - Install all AppImages: `ujust install-appimages`
   - Install individual AppImages: `ujust install-pinokio`, `ujust install-mediaelch`, etc.
   - Install GearLever AppImage manager: `ujust install-gearlever`
+- **GearLever AppImage Manager**: Flatpak installed per-user on first login for AppImage management
+- **Pre-installed AppImages**: Common applications in `/etc/skel/AppImages` auto-integrated on first login
+  - Pinokio (AI Browser), MediaElch (Kodi Media Manager), VeraCrypt (Encryption), LM Studio (Local AI)
 
 *When adding new features, please update this section to maintain a clear record of customizations.*

@@ -50,7 +50,6 @@ This is `bazzite-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc) ima
   - LM Studio (Local AI) - `lm_studio.appimage`
 - Autostart Integration: Desktop entry in `/etc/skel/.config/autostart/` automatically installs GearLever per-user and integrates AppImages on first user login, enabling GitHub-based update tracking
 
-- Spec-Driven Development: We use GitHub's SpecKit (https://github.com/github/spec-kit) as part of our development workflow to write executable specifications, generate plans and tasks, and drive implementation with supported AI agents. See `docs/speckit.md` for a brief internal reference and recommended commands.
 
 ## Development Workflow
 
@@ -121,16 +120,13 @@ This is `bazzite-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc) ima
 - **Permission denied in GHCR**: Ensure repository workflow permissions are set to "Read and write permissions"
 - **VS Code GPG errors**: Use `--nogpgcheck` flag (this is expected and documented)
 - **Build failures**: Check that base image `ghcr.io/ublue-os/bazzite-dx:stable` is accessible
-<<<<<<< HEAD
 - **Rechunking errors**: Check GitHub Actions logs for BTRFS mount failures or prev-ref query issues
 - **Large update sizes**: First rechunked build has no prev-ref; subsequent builds will be optimized
 - **Fresh rechunking**: Trigger via workflow dispatch with `fresh-rechunk: true` input (recommended monthly)
-=======
 - **Unknown GID after rebase**: Fixed by using static GID allocation in `sysusers.d/*.conf` files
   - System groups MUST use fixed GIDs (not `-` for dynamic allocation)
   - GIDs are assigned in 990-993 range to avoid conflicts
   - `systemd-sysusers` runs BEFORE package installation to pre-create groups
->>>>>>> 47851e5 (WIP: Fix 1Password permissions with fixed GIDs)
 
 ### Debug Commands
 - **Check image contents**: `podman run --rm -it bazzite-dkub:latest /bin/bash`
