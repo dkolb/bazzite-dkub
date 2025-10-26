@@ -62,12 +62,15 @@ jobs:
 
       # Maximize build space by removing unwanted software
       # Reclaims ~30GB of disk space on GitHub-hosted runners
+      # Skip on PR builds to save time
       - name: Maximize build space
+        if: github.event_name != 'pull_request'
         uses: ublue-os/remove-unwanted-software@cc0becac701cf642c8f0a6613bbdaf5dc36b259e # v9
         with:
           remove-codeql: true
 
       - name: Mount BTRFS for podman storage
+        if: github.event_name != 'pull_request'
         uses: ublue-os/container-storage-action@main
 
       - name: Get current date
@@ -131,9 +134,11 @@ jobs:
 
       # Rechunking implementation for 5-10x smaller update downloads
       # Documentation: https://github.com/hhd-dev/rechunk
+      # Skip on PR builds to save time - PRs just need to verify build succeeds
       
       # Step 1: Mount BTRFS storage required for rechunking
       - name: Mount BTRFS Storage for Rechunking
+        if: github.event_name != 'pull_request'
         run: |
           echo "Creating 50GB BTRFS filesystem for rechunking..."
           sudo mkdir -p /var/tmp/rechunk-btrfs
@@ -146,6 +151,7 @@ jobs:
 
       # Step 2: Generate version tag for this build (40-YYYYMMDD format)
       - name: Generate Version Tag
+        if: github.event_name != 'pull_request'
         id: generate-version
         run: |
           TAG="40-$(date +%Y%m%d)"
@@ -154,6 +160,7 @@ jobs:
 
       # Step 3: Query GHCR for previous rechunked image to use as baseline
       - name: Generate Previous Reference
+        if: github.event_name != 'pull_request'
         id: generate-prev-ref
         run: |
           # Skip prev-ref if fresh-rechunk mode enabled
@@ -188,6 +195,7 @@ jobs:
 
       # Step 4: Run rechunker to optimize OCI layers
       - name: Run Rechunker
+        if: github.event_name != 'pull_request'
         id: rechunk
         uses: hhd-dev/rechunk@5fbe1d3a639615d2548d83bc888360de6267b1a2 # v1.2.4
         with:
@@ -200,6 +208,7 @@ jobs:
 
       # Step 5: Load rechunked image and tag with final version
       - name: Load rechunked image in podman and tag
+        if: github.event_name != 'pull_request'
         run: |
           echo "Loading rechunked image from OCI directory..."
           # Use the version tag output from rechunker (may have .1, .2 suffix for duplicates)
@@ -221,6 +230,14 @@ jobs:
           sudo rm -rf ${{ steps.rechunk.outputs.output }}
           
           echo "✅ Rechunked image tagged and ready for push"
+
+      # Step 6: Clean up rechunk workspace
+      - name: Clean up rechunk workspace
+        if: github.event_name != 'pull_request' && always()
+        run: |
+          # Remove BTRFS mount and rechunk artifacts
+          sudo umount -l /var/lib/containers/storage || true
+          sudo rm -rf /mnt/btrfs-rechunk || true
 
       # These `if` statements are so that pull requests for your custom images do not make it publish any packages under your name without you knowing
       # They also check if the runner is on the default branch so that things like the merge queue (if you enable it), are going to work
