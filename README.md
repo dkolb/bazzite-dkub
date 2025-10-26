@@ -38,6 +38,17 @@ Install popular AppImages on-demand using `ujust` commands:
 
   *Note: AppImages are installed to `~/AppImages` and can be managed with GearLever.*
 
+### 1Password Integration
+For users who need 1Password (GUI, CLI, and browser integration), the recommended approach is to use distrobox:
+- **Setup**: `ujust setup-browsers-1password` - creates a Fedora distrobox with Google Chrome, Firefox, and 1Password
+- **Why distrobox?**: This is the most reliable way to get full integration between 1Password desktop app, browser extensions, and the `op` CLI
+- **What's included**: Google Chrome, Firefox, 1Password GUI, and 1Password CLI (`op` command) - all exported to host
+- **Configuration**: `/etc/distrobox/browsers-1password.ini` contains the full setup
+- Using distrobox for browsers and 1Password keeps the base image clean while providing seamless desktop integration
+- **Automatic setup**: A systemd user service creates the distrobox on first login (runs in the background, won't slow down login)
+
+> **📝 Note to Future David:** Yes, we use a systemd service instead of just running `distrobox assemble` directly in the hook. Before you think "why didn't I keep this simple ugh" and start ripping things out, remember: the systemd approach runs in the **background** so users don't sit there watching a terminal spin during their first login. It's also **restartable** if something goes wrong, and you can actually check its status with `systemctl --user status browsers-1password-setup.service`. Sure, it's a few more files, but it's a better UX. You thought this through. Trust Past David. He was onto something. 🧠✨
+
 ### Base Image
 - Built on `ghcr.io/ublue-os/bazzite-dx:stable` - includes development tools, Docker, and other productivity software out of the box
 
