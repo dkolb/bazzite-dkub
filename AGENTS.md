@@ -49,6 +49,12 @@ This is `bazzite-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc) ima
   - VeraCrypt (Disk Encryption) - `veracrypt.appimage`
   - LM Studio (Local AI) - `lm_studio.appimage`
 - Autostart Integration: Desktop entry in `/etc/skel/.config/autostart/` automatically installs GearLever per-user and integrates AppImages on first user login, enabling GitHub-based update tracking
+- **1Password Integration**: Distrobox-based setup for browsers and 1Password (keeps base image clean)
+  - Configuration: `/etc/distrobox/browsers-1password.ini` - defines Fedora container with Chrome, Firefox, and 1Password
+  - Systemd Service: `/etc/skel/.config/systemd/user/browsers-1password-setup.service` - creates distrobox on first login (background)
+  - User Setup Hook: `/usr/share/ublue-os/user-setup.hooks.d/15-browsers-1password.sh` - copies service file and enables it for all users
+  - Manual Setup: `ujust setup-browsers-1password` - creates distrobox immediately without waiting for login
+  - Apps Exported: Google Chrome, Firefox, 1Password GUI, 1Password CLI (`op` command)
 
 
 ## Development Workflow
