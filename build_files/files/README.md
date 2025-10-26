@@ -7,7 +7,6 @@ This directory contains static files that should be copied to the image during b
 Files in this directory mirror the final filesystem structure. For example:
 
 - `files/usr/share/ublue-os/just/60-custom.just` → `/usr/share/ublue-os/just/60-custom.just` in the image
-- `files/etc/yum.repos.d/1password.repo` → `/etc/yum.repos.d/1password.repo` in the image
 
 ## How It Works
 
@@ -24,10 +23,6 @@ cp -r /ctx/files/* / || true
   - `ujust install-appimages` - Install all common AppImages
   - `ujust install-pinokio`, `ujust install-mediaelch`, etc. - Install individual AppImages
   - `ujust install-gearlever` - Install GearLever AppImage manager
-
-### System Configuration
-- **`usr/lib/sysusers.d/onepassword-cli.conf`** - Pre-creates the `onepassword-cli` group (GID 953) for consistent permissions across rebases
-- **`etc/yum.repos.d/1password.repo`** - Official 1Password repository configuration used during image builds
 
 ## Adding New Static Files
 

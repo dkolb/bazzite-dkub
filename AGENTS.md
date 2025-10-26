@@ -37,7 +37,6 @@ This is `bazzite-dkub`, a custom [bootc](https://github.com/bootc-dev/bootc) ima
 - File Systems: Enhanced exFAT and DOS support via `dosfstools` and `exfatprogs`
 - Container Signing: Automated with Cosign via GitHub Actions
 - ShellCheck: Installed to provide shell script linting support
-- 1Password CLI: Installed from the official repository with a fixed `onepassword-cli` (GID 953) group for browser integration support
 - Custom ujust recipes: `/usr/share/ublue-os/just/60-custom.just` provides optional AppImage installation
   - `ujust install-appimages` - Install all common AppImages (Pinokio, MediaElch, VeraCrypt, LM Studio)
   - `ujust install-<name>` - Install individual AppImages on-demand
