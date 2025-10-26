@@ -8,8 +8,6 @@ _build-*/**
 Thumbs.db
 *.tmp
 *.swp
-.vscode/
-.idea/
 
 # Docker / CI
 node_modules/
