@@ -9,8 +9,7 @@ Yes, I experiment with Github Copilot in this repository. I'm trying not to die 
 ## Customizations
 
 **Latest Updates:**
-- ✅ **Fixed GID Assignment** - System groups use fixed GIDs to ensure consistent ownership across rebases
-  - `onepassword` (GID 953): Required by 1Password browser integration
+- ✅ **1Password CLI Integration** - Installed from the official repository with a fixed `onepassword-cli` (GID 953) group for reliable browser integration
 - **Build-time Permission Fixing** - 1Password-BrowserSupport permissions are set correctly during image build (before /usr becomes immutable)
 
 This image extends Bazzite-DX with the following modifications:
@@ -26,6 +25,7 @@ This image extends Bazzite-DX with the following modifications:
 - **VS Code**: Automatically updated to the latest version during build (bypasses GPG check for compatibility)
 - **File System Tools**: Enhanced exFAT and DOS filesystem support via `dosfstools` and `exfatprogs`
 - **ShellCheck**: Pre-installed for shell script linting in the image and CI
+- **1Password CLI**: Installed from the official repository so `op` is ready to use out of the box
 
 ### Optional AppImages (via ujust)
 Install popular AppImages on-demand using `ujust` commands:
@@ -306,6 +306,7 @@ These are images derived from this template (or similar enough to this template)
 - VS Code: Auto-updated to latest version (bypasses GPG check)
 - File Systems: Added `dosfstools` and `exfatprogs` for better removable media support
 - ShellCheck: Installed to support shell script linting during development
+- 1Password CLI: Added official repository, imported signing key, and pre-installed `op` with a fixed `onepassword-cli` group
 - **Custom ujust recipes**: Added `/usr/share/ublue-os/just/60-custom.just` for optional AppImage installation
   - Install all AppImages: `ujust install-appimages`
   - Install individual AppImages: `ujust install-pinokio`, `ujust install-mediaelch`, etc.

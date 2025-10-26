@@ -26,15 +26,8 @@ cp -r /ctx/files/* / || true
   - `ujust install-gearlever` - Install GearLever AppImage manager
 
 ### System Configuration
-- **`usr/lib/sysusers.d/onepassword-cli.conf`** - systemd sysusers.d declaration for the onepassword-cli group (ensures proper immutable OS integration)
-- **`usr/lib/sysusers.d/bazzite-dkub.conf`** - systemd sysusers.d declaration for bazzite-dkub-specific groups
-- **`etc/yum.repos.d/1password.repo`** - 1Password repository configuration
-- **`etc/yum.repos.d/google-chrome.repo`** - Google Chrome repository configuration
-
-### 1Password Optfix
-- **`usr/lib/systemd/system/optfix.service`** - Systemd service for optfix
-- **`usr/libexec/optfix.sh`** - Script to fix /opt symlinks on boot
-- **`usr/lib/tmpfiles.d/optfix.conf`** - Tmpfiles.d configuration for optfix
+- **`usr/lib/sysusers.d/onepassword-cli.conf`** - Pre-creates the `onepassword-cli` group (GID 953) for consistent permissions across rebases
+- **`etc/yum.repos.d/1password.repo`** - Official 1Password repository configuration used during image builds
 
 ## Adding New Static Files
 

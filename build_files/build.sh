@@ -25,6 +25,10 @@ dnf5 install -y dosfstools exfatprogs
 # Install ShellCheck for shell script linting during development and CI
 dnf5 install -y ShellCheck
 
+# Install 1Password CLI using the official repository (per YUM instructions)
+rpm --import https://downloads.1password.com/linux/keys/1password.asc
+dnf5 install -y 1password-cli
+
 # Use a COPR Example:
 #
 # dnf5 -y copr enable ublue-os/staging
