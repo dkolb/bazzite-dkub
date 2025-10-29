@@ -44,8 +44,10 @@ For users who need 1Password (GUI, CLI, and browser integration), the recommende
 - **Why distrobox?**: This is the most reliable way to get full integration between 1Password desktop app, browser extensions, and the `op` CLI
 - **What's included**: Google Chrome, Firefox, 1Password GUI, and 1Password CLI (`op` command) - all exported to host
 - **Configuration**: `/etc/distrobox/browsers-1password.ini` contains the full setup
+- **D-Bus Integration**: Container configured with system D-Bus access for 1Password CLI biometric/system authentication
 - Using distrobox for browsers and 1Password keeps the base image clean while providing seamless desktop integration
 - **Automatic setup**: A systemd user service creates the distrobox on first login (runs in the background, won't slow down login)
+- **Recreate safe**: The `ujust` script automatically removes any existing container before recreation (workaround for distrobox issue #838)
 
 > **📝 Note to Future David:** Yes, we use a systemd service instead of just running `distrobox assemble` directly in the hook. Before you think "why didn't I keep this simple ugh" and start ripping things out, remember: the systemd approach runs in the **background** so users don't sit there watching a terminal spin during their first login. It's also **restartable** if something goes wrong, and you can actually check its status with `systemctl --user status browsers-1password-setup.service`. Sure, it's a few more files, but it's a better UX. You thought this through. Trust Past David. He was onto something. 🧠✨
 
@@ -323,5 +325,10 @@ These are images derived from this template (or similar enough to this template)
 - **GearLever AppImage Manager**: Flatpak installed per-user on first login for AppImage management
 - **Pre-installed AppImages**: Common applications in `/etc/skel/AppImages` auto-integrated on first login
   - Pinokio (AI Browser), MediaElch (Kodi Media Manager), VeraCrypt (Encryption), LM Studio (Local AI)
+- **1Password Integration**: Distrobox-based setup with `ujust setup-browsers-1password`
+  - Includes Google Chrome, Firefox, 1Password GUI, and 1Password CLI (`op` command)
+  - D-Bus system bus access configured for CLI biometric/system authentication
+  - Auto-setup via systemd user service on first login (background)
+  - Container recreation safe (auto-removes existing container, fixes distrobox issue #838)
 
 *When adding new features, please update this section to maintain a clear record of customizations.*

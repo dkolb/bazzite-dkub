@@ -138,6 +138,12 @@ setup-browsers-1password:
         exit 1
     fi
     
+    # Remove existing container if it exists (workaround for distrobox assemble bug #838)
+    if distrobox list | grep -q "browsers-1password"; then
+        echo "Removing existing browsers-1password container..."
+        distrobox rm -f browsers-1password || true
+    fi
+    
     # Run distrobox assemble with the config file
     echo "Creating distrobox container..."
     distrobox assemble create --file /etc/distrobox/browsers-1password.ini
@@ -153,6 +159,11 @@ setup-browsers-1password:
     echo ""
     echo "All apps should appear in your application menu."
     echo "1Password browser integration should work automatically."
+    echo ""
+    echo "📝 Note: The container is configured with D-Bus system bus access"
+    echo "   to enable 1Password CLI biometric/system authentication."
+    echo "   You may still need to authenticate with your 1Password account"
+    echo "   password the first time or after restarts."
     echo ""
     echo "To remove this container later:"
     echo "  distrobox rm browsers-1password"
