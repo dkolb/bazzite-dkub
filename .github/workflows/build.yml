@@ -63,9 +63,7 @@ jobs:
 
       # Maximize build space by removing unwanted software
       # Reclaims ~30GB of disk space on GitHub-hosted runners
-      # Skip on PR builds to save time
       - name: Maximize build space
-        if: github.event_name != 'pull_request'
         uses: ublue-os/remove-unwanted-software@cc0becac701cf642c8f0a6613bbdaf5dc36b259e # v9
         with:
           remove-codeql: true
