@@ -203,7 +203,7 @@ jobs:
           prev-ref: ${{ steps.generate-prev-ref.outputs.ref }}
           version: ${{ steps.generate-version.outputs.tag }}
           labels: ${{ steps.metadata.outputs.labels }}
-        timeout-minutes: 10
+        timeout-minutes: 20
 
       # Step 5: Load rechunked image and tag with final version
       - name: Load rechunked image in podman and tag
